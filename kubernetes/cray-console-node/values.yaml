@@ -1,0 +1,106 @@
+# Please refer to https://stash.us.cray.com/projects/CLOUD/repos/cray-charts/browse/stable/cray-service/values.yaml?at=refs%2Fheads%2Fmaster
+# for more info on values you can set/override
+# Note that cray-service.containers[*].image and cray-service.initContainers[*].image map values are one of the only structures that
+# differ from the standard kubernetes container spec:
+# image:
+#   repository: ""
+#   tag: "" (default = "latest")
+#   pullPolicy: "" (default = "IfNotPresent")
+
+console_node_config:
+  cray_console_node_log_identifier: 'ID'
+  cray_console_node_smd_url: 'http://cray-smd'
+  cray_console_node_rf_endpoint: 'hsm/v1/Inventory/RedfishEndpoints'
+
+cray-service:
+  type: StatefulSet
+  nameOverride: cray-console-node
+  replicaCount: 1
+  containers:
+    cray-console-node:
+      name: cray-console-node
+      image:
+        repository: cray/cray-console-node
+      ports:
+        - name: http
+          containerPort: 26776
+      resources:
+        limits:
+          cpu: "4"
+          memory: 4Gi
+        requests:
+          cpu: 100m
+          memory: 64Mi
+      env:
+      - name: LOG_ROT_ENABLE
+        value: "True"
+      - name: LOG_ROT_FILE_SIZE
+        value: "5M"
+      - name: LOG_ROT_SEC_FREQ
+        value: "600"
+      - name: LOG_ROT_NUM_KEEP
+        value: "2"
+      - name: MY_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      envFrom:
+      - configMapRef:
+          name: console-node-config
+      livenessProbe:
+        httpGet:
+          port: 26776
+          path: /console-node/liveness
+        initialDelaySeconds: 10
+        periodSeconds: 60
+      readinessProbe:
+        httpGet:
+          port: 26776
+          path: /console-node/readiness
+        initialDelaySeconds: 5
+        periodSeconds: 60
+      volumeMounts:
+      - mountPath: /var/log
+        name: cray-console-logs
+      - mountPath: /tmp/consoleAgg
+        name: cray-console-node-agg
+    log-forwarding:
+      name: log-forwarding
+      image:
+        repository: baseos/alpine
+        tag: 3.12.0
+      args: [/bin/sh, -c, 'tail -n 0 -F /tmp/consoleAgg/consoleAgg-${MY_POD_NAME}.log']
+      env:
+      - name: MY_POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      volumeMounts:
+      - name: cray-console-node-agg
+        mountPath: /tmp/consoleAgg
+      - name: cray-console-logs
+        mountPath: /var/log
+  volumes:
+    cray-console-logs:
+      name: cray-console-logs
+      persistentVolumeClaim:
+        claimName: cray-console-operator-data-claim # created by console-operator
+    cray-console-node-agg:
+      name: cray-console-node-agg
+      persistentVolumeClaim:
+        claimName: cray-console-node-agg-data-claim
+  storageClass: ceph-cephfs-external
+  persistentVolumeClaims:
+    agg-data-claim:
+      name: agg-data-claim # will be prefixed with cray-console-node
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 10Gi
+  ingress:
+    enabled: true
+    uri: " "
+    prefix: /apis/console-node
+  strategy:
+    type: Recreate
