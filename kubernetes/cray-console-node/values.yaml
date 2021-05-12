@@ -32,13 +32,13 @@ cray-service:
           cpu: 100m
           memory: 64Mi
       env:
-      - name: LOG_ROT_ENABLE
+      - name: LOG_ROTATE_ENABLE
         value: "True"
-      - name: LOG_ROT_FILE_SIZE
+      - name: LOG_ROTATE_FILE_SIZE
         value: "5M"
-      - name: LOG_ROT_SEC_FREQ
+      - name: LOG_ROTATE_SEC_FREQ
         value: "600"
-      - name: LOG_ROT_NUM_KEEP
+      - name: LOG_ROTATE_NUM_KEEP
         value: "2"
       - name: MY_POD_NAME
         valueFrom:

@@ -62,16 +62,16 @@ func logRotate() {
 	ensureDirPresent(logRotDir, 0755)
 
 	// Check for log rotation env vars
-	if val := os.Getenv("LOG_ROT_ENABLE"); val != "" {
-		log.Printf("Found LOG_ROT_ENABLE: %s", val)
+	if val := os.Getenv("LOG_ROTATE_ENABLE"); val != "" {
+		log.Printf("Found LOG_ROTATE_ENABLE: %s", val)
 		logRotEnabled = isTrue(val)
 	}
-	if val := os.Getenv("LOG_ROT_FILE_SIZE"); val != "" {
-		log.Printf("Found LOG_ROT_FILE_SIZE: %s", val)
+	if val := os.Getenv("LOG_ROTATE_FILE_SIZE"); val != "" {
+		log.Printf("Found LOG_ROTATE_FILE_SIZE: %s", val)
 		logRotConFileSize = val
 	}
-	if val := os.Getenv("LOG_ROT_SEC_FREQ"); val != "" {
-		log.Printf("Found LOG_ROT_SEC_FREQ: %s", val)
+	if val := os.Getenv("LOG_ROTATE_SEC_FREQ"); val != "" {
+		log.Printf("Found LOG_ROTATE_SEC_FREQ: %s", val)
 		envFreq, err := strconv.Atoi(val)
 		if err != nil {
 			log.Printf("Error converting log rotation freqency - expected an integer:%s", err)
@@ -79,8 +79,8 @@ func logRotate() {
 			logRotCheckFreqSec = envFreq
 		}
 	}
-	if val := os.Getenv("LOG_ROT_NUM_KEEP"); val != "" {
-		log.Printf("Found LOG_ROT_NUM_KEEP: %s", val)
+	if val := os.Getenv("LOG_ROTATE_NUM_KEEP"); val != "" {
+		log.Printf("Found LOG_ROTATE_NUM_KEEP: %s", val)
 		envNum, err := strconv.Atoi(val)
 		if err != nil {
 			log.Printf("Error converting log rotation freqency - expected an integer:%s", err)
