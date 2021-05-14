@@ -154,7 +154,7 @@ func watchConsoleLogFile(ctx context.Context, xname string) {
 	}
 }
 
-// function to manage concurrent writes to the aggragation log
+// function to manage concurrent writes to the aggregation log
 func writeToAggLog(str string) {
 	conAggMutex.Lock()
 	defer conAggMutex.Unlock()

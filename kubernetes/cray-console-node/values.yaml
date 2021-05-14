@@ -40,6 +40,14 @@ cray-service:
         value: "600"
       - name: LOG_ROTATE_NUM_KEEP
         value: "2"
+      - name: HEARTBEAT_SEND_FREQ_SEC
+        value: "30"
+      - name: NODE_UPDATE_FREQ_SEC
+        value: "30"
+      - name: MAX_ACQUIRE_PER_UPDATE_MTN
+        value: "200"
+      - name: MAX_ACQUIRE_PER_UPDATE_RVR
+        value: "500"
       - name: MY_POD_NAME
         valueFrom:
           fieldRef:

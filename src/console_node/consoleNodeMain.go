@@ -97,6 +97,15 @@ func main() {
 	flag.BoolVar(&debugOnly, "debug", false, "Run in debug only mode, not starting conmand")
 	flag.Parse()
 
+	// grab env vars
+	if v := os.Getenv("DEBUG"); v == "TRUE" {
+		debugOnly = true
+	}
+	readSingleEnvVarInt("HEARTBEAT_SEND_FREQ_SEC", &heartbeatIntervalSecs, 5, 300)
+	readSingleEnvVarInt("NODE_UPDATE_FREQ_SEC", &newNodeLookupSec, 10, 600)
+	readSingleEnvVarInt("MAX_ACQUIRE_PER_UPDATE_MTN", &maxAcquireMtn, 5, 2000)
+	readSingleEnvVarInt("MAX_ACQUIRE_PER_UPDATE_RVR", &maxAcquireRvr, 5, 4000)
+
 	// log the fact if we are in debug mode
 	if debugOnly {
 		log.Print("Running in DEBUG-ONLY mode.")
@@ -211,7 +220,7 @@ func releaseAllNodes() {
 	releaseNodes(rn)
 }
 
-// Utility function to insure that a directory exists
+// Utility function to ensure that a directory exists
 func ensureDirPresent(dir string, perm os.FileMode) (bool, error) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		log.Printf("Directory does not exist, creating: %s", dir)
@@ -222,4 +231,27 @@ func ensureDirPresent(dir string, perm os.FileMode) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// Function to read a single env variable into a variable with min/max checks
+func readSingleEnvVarInt(envVar string, outVar *int, minVal, maxVal int) {
+	// get the env var for maximum number of mountain nodes per pod
+	if v := os.Getenv(envVar); v != "" {
+		log.Printf("Found %s env var: %s", envVar, v)
+		vi, err := strconv.Atoi(v)
+		if err != nil {
+			log.Printf("Error converting value for %s - expected an integer:%s", envVar, err)
+		} else {
+			// do some sanity checking
+			if vi < minVal {
+				log.Printf("Defaulting %s to minimum value:%d", envVar, minVal)
+				vi = minVal
+			}
+			if vi > maxVal {
+				log.Printf("Defaulting %s to maximum value:%d", envVar, maxVal)
+				vi = maxVal
+			}
+			*outVar = vi
+		}
+	}
 }

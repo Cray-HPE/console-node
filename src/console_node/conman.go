@@ -83,7 +83,6 @@ func runConman() {
 		// start the conmand process
 		if debugOnly {
 			// not really running, just give a longer pause before re-running config
-			//time.Sleep(5 * time.Minute)
 			time.Sleep(25 * time.Second)
 			log.Printf("Sleeping the executeConman process")
 		} else if len(currentMtnNodes)+len(currentRvrNodes) == 0 {
@@ -107,7 +106,7 @@ func runConman() {
 
 // Function to send SIGHUP to running conmand process
 func signalConmanHUP() {
-	// send interupt to tell conman to re-initialize - this is usually called
+	// send interrupt to tell conman to re-initialize - this is usually called
 	//  after a log rotataion and all log files will be regenerated
 	if command != nil {
 		log.Print("Signaling conman with SIGHUP")

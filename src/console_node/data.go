@@ -157,14 +157,17 @@ func releaseNodes(nodes []nodeConsoleInfo) {
 	if err != nil {
 		log.Printf("Error releasing nodes: %s", err)
 	}
-
-	// TODO: what kind of return data?
 }
 
 //========================================
 // Debugging functions below - not used in production path
 //========================================
 
+// NOTE: keeping the below functions for the time being to use when
+//  we create a set of integration tests.  They will be moved from
+//  here at that time.
+
+/*
 func debugNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
 	// make 2 fake nodes to return
 	var retVal []nodeConsoleInfo = nil
@@ -202,7 +205,7 @@ func createTestNI(id int, cl string) nodeConsoleInfo {
 		Role:     "Compute",
 	}
 }
-
+*/
 // DEBUG Function to create and add to a fake log file
 func createTestLogFile(xname string, respin bool) {
 	// NOTE: this function is only for use in a debug environment where there

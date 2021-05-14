@@ -61,8 +61,8 @@ var targetRvrNodes int = -1
 var targetMtnNodes int = -1
 
 // Number of nodes to get per acquasition query
-var maxAcquireRvr int = 100
-var maxAcquireMtn int = 100
+var maxAcquireRvr int = 500
+var maxAcquireMtn int = 200
 
 // Pause between each lookup for new node information
 var newNodeLookupSec int = 30

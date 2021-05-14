@@ -28,10 +28,40 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net/http"
 )
+
+// Send error or empty OK response
+func sendJSONError(w http.ResponseWriter, ecode int, message string) {
+	// If HTTP call is success, put zero in returned json error field.
+	httpCode := ecode
+	if ecode >= 200 && ecode <= 299 {
+		ecode = 0
+	}
+
+	data := ErrResponse{
+		E:      ecode,
+		ErrMsg: message,
+	}
+
+	SendResponseJSON(w, httpCode, data)
+}
+
+// SendResponseJSON sends data marshalled as a JSON body and sets the HTTP
+// status code to sc.
+func SendResponseJSON(w http.ResponseWriter, sc int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(sc)
+
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		log.Printf("Error: encoding/sending JSON response: %s\n", err)
+		return
+	}
+}
 
 // Helper function to execute an http POST command
 func postURL(URL string, requestBody []byte, requestHeaders map[string]string) ([]byte, int, error) {

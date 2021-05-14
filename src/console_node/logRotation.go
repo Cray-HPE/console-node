@@ -89,13 +89,6 @@ func logRotate() {
 		}
 	}
 
-	// override settings for debug only
-	if debugOnly {
-		logRotConFileSize = "150K"
-		logRotAggFileSize = "500K"
-		logRotCheckFreqSec = 10
-	}
-
 	// log the log rotation parameters
 	log.Printf("LOG ROTATE: Log rotation enabled: %v, Check Freq Sec: %d", logRotEnabled, logRotCheckFreqSec)
 	log.Printf("LOG ROTATE: Log rotation console file size: %s, num rotate: %d", logRotConFileSize, logRotConNumRotate)

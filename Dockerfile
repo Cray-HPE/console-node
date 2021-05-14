@@ -49,7 +49,7 @@ FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2
 
 # Install conman application from package
 RUN set -eux \
-    && zypper --non-interactive install conman less vi openssh jq curl
+    && zypper --non-interactive install conman less vi openssh jq curl tar
 
 # Copy in the needed files
 COPY --from=build /app/console_node /app/
