@@ -1,6 +1,5 @@
-#!/usr/bin/expect --
-
-# Copyright 2020-2021 Hewlett Packard Enterprise Development LP
+#!/usr/bin/env sh
+# Copyright 2021 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -22,26 +21,7 @@
 #
 # (MIT License)
 
-# This can be called from within the context of conman to
-# establish an ssh connection to a Mountain node console.
-# Usage and examples below assume this script's name is
-# ssh-console and located on the system under /usr/bin
-#
-# Usage: ssh-console xname
-#  Example: ssh-console x5000c3s6b0n0
-#
-# Example /etc/conman.conf entry:
-# console name="x5000c3s6b0n0" dev="/usr/bin/ssh-console x5000c3s6b0n0"
-#
-
-set env(TERM) xterm
-set controller [string range [lindex $argv 0] 0 end-2]
-set session [string range [lindex $argv 0] end-1 end]
-set timeout -1
-set pid [spawn ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /var/log/console/conman.key $session@$controller]
-exit -onexit {
-  exec kill $pid
-  wait $pid
-  exp_exit
-}
-interact
+./install_cms_meta_tools.sh || exit 1
+./cms_meta_tools/update_versions/update_versions.sh || exit 1
+rm -rf ./cms_meta_tools
+exit 0
