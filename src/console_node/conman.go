@@ -7,10 +7,10 @@
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -18,7 +18,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * (MIT License)
  */
 
@@ -35,8 +35,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	compcreds "stash.us.cray.com/HMS/hms-compcredentials"
 )
 
 // Global to access running conmand process
@@ -266,16 +264,19 @@ func updateConfigFile(forceUpdate bool) {
 
 	// collect the creds for the river endpoints
 	var rvrXNames []string = nil
-	for name := range currentRvrNodes {
-		rvrXNames = append(rvrXNames, name)
+	for _, v := range currentRvrNodes {
+		rvrXNames = append(rvrXNames, v.BmcName)
 	}
-	var passwords map[string]compcreds.CompCredentials
-	passwords = getPasswords(rvrXNames)
 
+	// gather the river passwords
+	passwords := getPasswords(rvrXNames)
 	// Add River endpoints to the config file to be accessed by ipmi
 	for _, nodeCi := range currentRvrNodes {
 		// connect using ipmi
-		creds := passwords[nodeCi.BmcName]
+		creds, ok := passwords[nodeCi.BmcName]
+		if !ok {
+			log.Printf("No record returned for %s", nodeCi.BmcName)
+		}
 		log.Printf("console name=\"%s\" dev=\"ipmi:%s\" ipmiopts=\"U:%s,P:REDACTED,W:solpayloadsize\"\n",
 			nodeCi.NodeName,
 			nodeCi.BmcFqdn,
