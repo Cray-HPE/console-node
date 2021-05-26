@@ -138,7 +138,8 @@ gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 h1:uRGJdciOHaEIrze2W8Q3AKkep
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7/go.mod h1:dt/ZhP58zS4L8KSrWDmTeBkI65Dw0HsyUHuEVlX15mw=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
-stash.us.cray.com/HMS/hms-compcredentials v1.10.0 h1:I0z3cW1FJ92TMbHq7BKFX7NXnu1MFFGgZkKTLw4sih0=
-stash.us.cray.com/HMS/hms-compcredentials v1.10.0/go.mod h1:G7HccBFy+wJkxdxSgVRmGm0MzG3KBFNtkx9NW41jMlA=
-stash.us.cray.com/HMS/hms-securestorage v1.11.0 h1:VEW860tXgGqD0jSB8cAsEdvd5tb1m34kq84Ur83VqPs=
+stash.us.cray.com/HMS/hms-compcredentials v1.10.1 h1:W2hIwQ/LJuiK/6Llt4OJA2+dUb/Yl7Lq1NaKTwMuu0I=
+stash.us.cray.com/HMS/hms-compcredentials v1.10.1/go.mod h1:G7HccBFy+wJkxdxSgVRmGm0MzG3KBFNtkx9NW41jMlA=
 stash.us.cray.com/HMS/hms-securestorage v1.11.0/go.mod h1:/tRNXYwCBvVdbhu6a+i5R3Jftag4x8921qWwA+jo4JA=
+stash.us.cray.com/HMS/hms-securestorage v1.11.1 h1:WrURWku8aAlIV/W8SazFQC4CSsPao9bzJd2luoDgmTs=
+stash.us.cray.com/HMS/hms-securestorage v1.11.1/go.mod h1:/tRNXYwCBvVdbhu6a+i5R3Jftag4x8921qWwA+jo4JA=
