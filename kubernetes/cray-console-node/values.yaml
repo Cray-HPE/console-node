@@ -76,7 +76,7 @@ cray-service:
       name: log-forwarding
       image:
         repository: baseos/alpine
-        tag: 3.12.0
+        tag: 3.13.5
       args: [/bin/sh, -c, 'tail -n 0 -F /tmp/consoleAgg/consoleAgg-${MY_POD_NAME}.log']
       env:
       - name: MY_POD_NAME
