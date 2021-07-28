@@ -31,8 +31,8 @@ import (
 	"os"
 	"time"
 
-	compcreds "stash.us.cray.com/HMS/hms-compcredentials"
-	sstorage "stash.us.cray.com/HMS/hms-securestorage"
+	compcreds "github.com/Cray-HPE/hms-compcredentials"
+	sstorage "github.com/Cray-HPE/hms-securestorage"
 )
 
 // Location of the Mountain BMC console ssh key pair files.
