@@ -1,3 +1,7 @@
+# github.com/Cray-HPE/hms-compcredentials v1.11.2
+github.com/Cray-HPE/hms-compcredentials
+# github.com/Cray-HPE/hms-securestorage v1.12.2
+github.com/Cray-HPE/hms-securestorage
 # github.com/golang/snappy v0.0.1
 github.com/golang/snappy
 # github.com/hashicorp/errwrap v1.0.0
@@ -78,7 +82,3 @@ gopkg.in/square/go-jose.v2/json
 gopkg.in/square/go-jose.v2/jwt
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
-# stash.us.cray.com/HMS/hms-compcredentials v1.10.1
-stash.us.cray.com/HMS/hms-compcredentials
-# stash.us.cray.com/HMS/hms-securestorage v1.11.1
-stash.us.cray.com/HMS/hms-securestorage
