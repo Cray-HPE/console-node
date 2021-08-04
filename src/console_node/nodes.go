@@ -7,10 +7,10 @@
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -18,7 +18,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * (MIT License)
  */
 
@@ -33,6 +33,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -53,6 +54,7 @@ func (nc nodeConsoleInfo) String() string {
 }
 
 // Globals for managing nodes being watched
+var currNodesMutex = &sync.Mutex{}
 var currentMtnNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
 var currentRvrNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
 
@@ -84,61 +86,73 @@ func pinNumNodes(numAsk, numMax int) int {
 	return numAsk
 }
 
+func doGetNewNodes() {
+	// put a lock on the current nodes while looking for new ones
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// keep track of if we need to redo the configuration
+	changed := false
+
+	// Update the target number of nodes being monitored
+	updateNodesPerPod()
+
+	// Check if we need to gather more nodes - don't take more
+	//  if the service is shutting down
+	if !inShutdown && (len(currentRvrNodes) < targetRvrNodes || len(currentMtnNodes) < targetMtnNodes) {
+		// figure out how many of each to ask for
+		numRvr := pinNumNodes(targetRvrNodes-len(currentRvrNodes), maxAcquireRvr)
+		numMtn := pinNumNodes(targetMtnNodes-len(currentMtnNodes), maxAcquireMtn)
+
+		// attempt to aquire more nodes
+		if numRvr > 0 || numMtn > 0 {
+			// NOTE: this should be the ONLY place where the maps of
+			//  current nodes is updated!!!
+			log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
+			newNodes := acquireNewNodes(numMtn, numRvr)
+			// process the new nodes
+			for i, node := range newNodes {
+				log.Printf("  Processing node: %s", node.String())
+				if node.Class == "River" {
+					currentRvrNodes[node.NodeName] = &newNodes[i]
+					log.Printf("  Adding new river node: %s", node.String())
+					changed = true
+				} else if node.Class == "Mountain" {
+					currentMtnNodes[node.NodeName] = &newNodes[i]
+					log.Printf("  Adding new mtn node: %s", node.String())
+					changed = true
+				}
+			}
+		} else {
+			log.Printf("Nothing to acquire after pin...")
+		}
+	} else {
+		log.Printf("Skipping acquire - at capacity. CurRvr:%d, TarRvr:%d, CurMtn:%d, TarMtn:%d",
+			len(currentRvrNodes), targetRvrNodes, len(currentMtnNodes), targetMtnNodes)
+	}
+
+	// See if we have too many nodes
+	if rebalanceNodes() {
+		changed = true
+	}
+
+	// Restart the conman process if needed
+	if changed {
+		// trigger a re-configuration and restart of conman
+		signalConmanTERM()
+
+		// rebuild the log rotation configuration file
+		updateLogRotateConf()
+	}
+
+}
+
 // Primary loop to watch for updates
 func watchForNodes() {
 	// create a loop to execute the conmand command
 	for {
-		// keep track of if we need to redo the configuration
-		changed := false
-
-		// Update the target number of nodes being monitored
-		updateNodesPerPod()
-
-		// Check if we need to gather more nodes - don't take more
-		//  if the service is shutting down
-		if !inShutdown && (len(currentRvrNodes) < targetRvrNodes || len(currentMtnNodes) < targetMtnNodes) {
-			// figure out how many of each to ask for
-			numRvr := pinNumNodes(targetRvrNodes-len(currentRvrNodes), maxAcquireRvr)
-			numMtn := pinNumNodes(targetMtnNodes-len(currentMtnNodes), maxAcquireMtn)
-
-			// attempt to aquire more nodes
-			if numRvr > 0 || numMtn > 0 {
-				log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
-				newNodes := acquireNewNodes(numMtn, numRvr)
-				// process the new nodes
-				for i, node := range newNodes {
-					log.Printf("  Processing node: %s", node.String())
-					if node.Class == "River" {
-						currentRvrNodes[node.NodeName] = &newNodes[i]
-						log.Printf("  Adding new river node: %s", node.String())
-						changed = true
-					} else if node.Class == "Mountain" {
-						currentMtnNodes[node.NodeName] = &newNodes[i]
-						log.Printf("  Adding new mtn node: %s", node.String())
-						changed = true
-					}
-				}
-			} else {
-				log.Printf("Nothing to acquire after pin...")
-			}
-		} else {
-			log.Printf("Skipping acquire - at capacity. CurRvr:%d, TarRvr:%d, CurMtn:%d, TarMtn:%d",
-				len(currentRvrNodes), targetRvrNodes, len(currentMtnNodes), targetMtnNodes)
-		}
-
-		// See if we have too many nodes
-		if rebalanceNodes() {
-			changed = true
-		}
-
-		// Restart the conman process if needed
-		if changed {
-			// trigger a re-configuration and restart of conman
-			signalConmanTERM()
-
-			// rebuild the log rotation configuration file
-			updateLogRotateConf()
-		}
+		// look for new nodes once
+		doGetNewNodes()
 
 		// Wait for the correct polling interval
 		time.Sleep(time.Duration(newNodeLookupSec) * time.Second)
@@ -150,6 +164,8 @@ func rebalanceNodes() bool {
 	// NOTE: this function just modifies currentNodes lists and stops
 	//  tailing operation.  The configuration files will be triggered to be
 	//  regenerated outside of this operation.
+
+	// NOTE: in doGetNewNodes thread
 
 	// see if we need to release any nodes
 	if len(currentRvrNodes) <= targetRvrNodes && len(currentMtnNodes) <= targetMtnNodes {
@@ -206,6 +222,8 @@ func rebalanceNodes() bool {
 
 // Function to release the node from being monitored
 func releaseNode(xname string) bool {
+	// NOTE: called during heartbeat thread
+
 	// This will remove it from the list of current nodes and stop tailing the
 	// log file.
 	found := false
@@ -232,6 +250,8 @@ func updateNodesPerPod() {
 	//  This mechanism can be made more elegant later if needed but it
 	//  needs to be something that can be picked up by all console-node
 	//  pods without restarting them.
+
+	// NOTE: in doGetNewNodes thread
 
 	log.Printf("Updating nodes per pod")
 	// open the state file

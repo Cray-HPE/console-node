@@ -7,10 +7,10 @@
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -18,7 +18,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * (MIT License)
  */
 
@@ -95,7 +95,7 @@ func logRotate() {
 	log.Printf("LOG ROTATE: Log rotation aggregation file size: %s, num rotate: %d", logRotAggFileSize, logRotAggNumRotate)
 
 	// Create the log rotation configuration file
-	updateLogRotateConf()
+	doInitialConfFileUpdate()
 
 	// Start the log rotation thread
 	go doLogRotate()
@@ -120,8 +120,26 @@ func isTrue(str string) bool {
 	return false
 }
 
+// Do the initial log rotation file update in a thread safe manner
+func doInitialConfFileUpdate() {
+	// Make sure the initial log rotation file doesn't miss or overwrite
+	// the initial batch of consoles being monitored.
+
+	// put a lock on the current nodes while writing the file
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// update the file now that it is safe to do so
+	updateLogRotateConf()
+}
+
 // Create the log rotation configuration file
 func updateLogRotateConf() {
+	// NOTE: calling function needs to insure current node maps are
+	//  thread protected
+	// NOTE: in doGetNewNodes thread
+	// NOTE: also in initial configuration
+
 	// This is the default format supplied by the install of
 	// the conman package.
 	// NOTE: conmand needs the '-HUP' signal to reconnect to
