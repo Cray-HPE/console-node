@@ -135,7 +135,7 @@ func doInitialConfFileUpdate() {
 
 // Create the log rotation configuration file
 func updateLogRotateConf() {
-	// NOTE: calling function needs to insure current node maps are
+	// NOTE: calling function needs to ensure current node maps are
 	//  thread protected
 	// NOTE: in doGetNewNodes thread
 	// NOTE: also in initial configuration

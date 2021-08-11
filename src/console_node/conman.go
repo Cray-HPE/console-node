@@ -73,7 +73,7 @@ func configConman(forceConfigUpdate bool) bool {
 	// Make sure that we have a proper ssh console keypair deployed
 	// here and on the Mountain BMCs before starting conman.
 	// NOTE: this function will wait to return until keys are
-	//  present if there are mountain consoles to configure
+	//  present if there are Mountain consoles to configure
 	ensureMountainConsoleKeysPresent()
 
 	// return if there are any nodes

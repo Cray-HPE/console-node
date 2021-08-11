@@ -67,7 +67,7 @@ func getPasswordsWithRetries(bmcXNames []string, maxTries, waitSecs int) map[str
 		}
 
 		// if we did not get all passwords try again until maxAttempts
-		log.Printf("Attempt %d - Only retrieved %d of %d river creds from vault, waiting and trying again...",
+		log.Printf("Attempt %d - Only retrieved %d of %d River creds from vault, waiting and trying again...",
 			numTries, len(passwords), len(bmcXNames))
 		time.Sleep(time.Duration(waitSecs) * time.Second)
 	}
