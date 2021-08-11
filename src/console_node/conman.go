@@ -44,6 +44,42 @@ var command *exec.Cmd = nil
 const baseConfFile string = "/app/conman_base.conf"
 const confFile string = "/etc/conman.conf"
 
+// Do all the steps needed to update configurations for a given conmand process
+func configConman(forceConfigUpdate bool) bool {
+	// maintain a lock on the current nodes while doing complete configuration
+	// NOTE: this prevents the lists from being updated in the middle of doing
+	//  the configuration
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// Set up or update the conman configuration file.
+	updateConfigFile(forceConfigUpdate)
+
+	// set up a thread to add log output to the aggregation file
+	for nn := range currentRvrNodes {
+		// make sure the node is being aggregated - no-op if already being done
+		aggregateFile(nn)
+	}
+
+	// keep track of an array of new mountain nodes to check creds
+	var newMtnNodes []nodeConsoleInfo = nil
+	for nn, ni := range currentMtnNodes {
+		// keep track of newly added mountain nodes
+		if aggregateFile(nn) {
+			newMtnNodes = append(newMtnNodes, *ni)
+		}
+	}
+
+	// Make sure that we have a proper ssh console keypair deployed
+	// here and on the Mountain BMCs before starting conman.
+	// NOTE: this function will wait to return until keys are
+	//  present if there are Mountain consoles to configure
+	ensureMountainConsoleKeysPresent()
+
+	// return if there are any nodes
+	return (len(currentMtnNodes) + len(currentRvrNodes)) > 0
+}
+
 // Loop that starts / restarts conmand process
 func runConman() {
 	// This loop runs forever, updating the configuration file and
@@ -52,38 +88,16 @@ func runConman() {
 	//  the loop even if the user requests no updates
 	forceConfigUpdate := true
 	for {
-		// Set up or update the conman configuration file.
-		// NOTE: do not let the user skip the update the first time through
-		updateConfigFile(forceConfigUpdate)
+		// do the configuration steps - force update on first pass
+		hasNodes := configConman(forceConfigUpdate)
 		forceConfigUpdate = false
-
-		// set up a thread to add log output to the aggregation file
-		for nn := range currentRvrNodes {
-			// make sure the node is being aggregated - no-op if already being done
-			aggregateFile(nn)
-		}
-
-		// keep track of an array of new mountain nodes to check creds
-		var newMtnNodes []nodeConsoleInfo = nil
-		for nn, ni := range currentMtnNodes {
-			// keep track of newly added mountain nodes
-			if aggregateFile(nn) {
-				newMtnNodes = append(newMtnNodes, *ni)
-			}
-		}
-
-		// Make sure that we have a proper ssh console keypair deployed
-		// here and on the Mountain BMCs before starting conman.
-		// NOTE: this function will wait to return until keys are
-		//  present if there are mountain consoles to configure
-		ensureMountainConsoleKeysPresent()
 
 		// start the conmand process
 		if debugOnly {
 			// not really running, just give a longer pause before re-running config
 			time.Sleep(25 * time.Second)
 			log.Printf("Sleeping the executeConman process")
-		} else if len(currentMtnNodes)+len(currentRvrNodes) == 0 {
+		} else if !hasNodes {
 			// nothing found, don't try to start conmand
 			log.Printf("No console nodes found - trying again")
 			time.Sleep(30 * time.Second)
@@ -114,6 +128,7 @@ func signalConmanHUP() {
 
 		// if we are in debug mode, respin the fake logs as needed
 		if debugOnly {
+			// NOTE - debugging test code, so don't worry about mutex for current nodes
 			log.Printf("Respinning current log test files...")
 			for nn := range currentRvrNodes {
 				go createTestLogFile(nn, true)
@@ -230,6 +245,8 @@ func willUpdateConfig(fp *os.File) bool {
 
 // Update the configuration file with the current endpoints
 func updateConfigFile(forceUpdate bool) {
+	// NOTE: in update config thread
+
 	log.Print("Updating the configuration file")
 
 	// open the base file
@@ -269,7 +286,10 @@ func updateConfigFile(forceUpdate bool) {
 	}
 
 	// gather the river passwords
-	passwords := getPasswords(rvrXNames)
+	// NOTE: sometimes if vault hasn't been populated yet there may be no
+	// return values - try again for a while in that case.
+	passwords := getPasswordsWithRetries(rvrXNames, 15, 10)
+
 	// Add River endpoints to the config file to be accessed by ipmi
 	for _, nodeCi := range currentRvrNodes {
 		// connect using ipmi
