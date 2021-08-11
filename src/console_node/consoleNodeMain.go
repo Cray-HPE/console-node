@@ -7,10 +7,10 @@
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -18,7 +18,7 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * (MIT License)
  */
 
@@ -135,7 +135,7 @@ func main() {
 	go watchForNodes()
 
 	// start up the heartbeat in a separate thread
-	go sendHeartbeat()
+	go doHeartbeat()
 
 	// start up the thread that runs conman
 	go runConman()
@@ -196,6 +196,10 @@ func main() {
 
 // make sure that all nodes are released immediately
 func releaseAllNodes() {
+	// make sure nobody else is messing with the current nodes
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
 	log.Printf("Releasing all nodes back for re-assignment")
 	// gather all current nodes
 	var rn []nodeConsoleInfo

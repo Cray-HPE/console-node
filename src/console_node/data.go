@@ -7,10 +7,10 @@
  * the rights to use, copy, modify, merge, publish, distribute, sublicense,
  * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -18,10 +18,10 @@
  * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * (MIT License)
  */
- 
+
 // This file contains the functions to interact with console-data
 
 package main
@@ -47,6 +47,7 @@ var debugCtr int = 0
 
 // Function to acquire new consoles to monitor
 func acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
+	// NOTE: in doGetNewNodes thread
 	log.Printf("Acquiring new nodes mtn: %d, rvr: %d", numMtn, numRvr)
 
 	// put together data package
@@ -80,57 +81,67 @@ func acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
 	return newNodes
 }
 
+// Function to do the heartbeat
+func sendSingleHeartbeat() {
+	// lock the list of current nodes while updating heartbeat information
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// create the url for the heartbeat of this pod
+	url := fmt.Sprintf("%s/consolepod/%s/heartbeat", dataAddrBase, podID)
+
+	// gather the current nodes and assemble into json data
+	currNodes := make([]nodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
+	for _, ni := range currentRvrNodes {
+		currNodes = append(currNodes, *ni)
+	}
+	for _, ni := range currentMtnNodes {
+		currNodes = append(currNodes, *ni)
+	}
+	data, err := json.Marshal(currNodes)
+	if err != nil {
+		log.Printf("Error marshalling data for add nodes:%s", err)
+		return
+	}
+
+	// log last heartbeat time
+	t := time.Now()
+	lastHeartbeatTime = t.Format(time.RFC3339)
+
+	// make the http call
+	log.Printf("Pod: %s sending heartbeat", podID)
+	rb, _, err := postURL(url, data, nil)
+	if err != nil {
+		log.Printf("Error sending heartbeat: %s", err)
+	}
+
+	// process the nodes no longer controlled by this pod
+	if rb != nil {
+		// should be an array of nodeConsoleInfo structs
+		var droppedNodes []nodeConsoleInfo
+		err := json.Unmarshal(rb, &droppedNodes)
+		if err != nil {
+			log.Printf("Error unmarshalling heartbeat return data: %s", err)
+		} else if len(droppedNodes) > 0 {
+			log.Printf("Heartbeat: There are %d dropped nodes", len(droppedNodes))
+
+			// release the nodes
+			for _, ni := range droppedNodes {
+				releaseNode(ni.NodeName)
+			}
+
+			// signal conman to restart/reconfigure
+			signalConmanTERM()
+		}
+	}
+}
+
 // Function to send heartbeat to console-data
-func sendHeartbeat() {
+func doHeartbeat() {
 	// NOTE: this is intended to be constantly running in its own thread
 	for {
-		// create the url for the heartbeat of this pod
-		url := fmt.Sprintf("%s/consolepod/%s/heartbeat", dataAddrBase, podID)
-
-		// gather the current nodes and assemble into json data
-		currNodes := make([]nodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
-		for _, ni := range currentRvrNodes {
-			currNodes = append(currNodes, *ni)
-		}
-		for _, ni := range currentMtnNodes {
-			currNodes = append(currNodes, *ni)
-		}
-		data, err := json.Marshal(currNodes)
-		if err != nil {
-			log.Printf("Error marshalling data for add nodes:%s", err)
-			return
-		}
-
-		// log last heartbeat time
-		t := time.Now()
-		lastHeartbeatTime = t.Format(time.RFC3339)
-
-		// make the http call
-		log.Printf("Pod: %s sending heartbeat", podID)
-		rb, _, err := postURL(url, data, nil)
-		if err != nil {
-			log.Printf("Error sending heartbeat: %s", err)
-		}
-
-		// process the nodes no longer controlled by this pod
-		if rb != nil {
-			// should be an array of nodeConsoleInfo structs
-			var droppedNodes []nodeConsoleInfo
-			err := json.Unmarshal(rb, &droppedNodes)
-			if err != nil {
-				log.Printf("Error unmarshalling heartbeat return data: %s", err)
-			} else if len(droppedNodes) > 0 {
-				log.Printf("Heartbeat: There are %d dropped nodes", len(droppedNodes))
-
-				// release the nodes
-				for _, ni := range droppedNodes {
-					releaseNode(ni.NodeName)
-				}
-
-				// signal conman to restart/reconfigure
-				signalConmanTERM()
-			}
-		}
+		// do a single heartbeat event
+		sendSingleHeartbeat()
 
 		// wait for the next interval
 		time.Sleep(time.Duration(heartbeatIntervalSecs) * time.Second)
@@ -141,6 +152,10 @@ func sendHeartbeat() {
 func releaseNodes(nodes []nodeConsoleInfo) {
 	// NOTE: the current console-data api takes nodeConsoleInfo structs, but really only
 	//  needs the xname (as a key).
+
+	// NOTE: calling function needs to protect current nodes lists
+	// NOTE: in doGetNewNodes thread
+	// NOTE: also called from releaseAllNodes when shutting down
 
 	// create the url for the heartbeat of this pod
 	url := fmt.Sprintf("%s/consolepod/%s/release", dataAddrBase, podID)

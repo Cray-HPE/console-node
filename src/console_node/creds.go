@@ -40,8 +40,47 @@ import (
 const mountainConsoleKey string = "/var/log/console/conman.key"
 const mountainConsoleKeyPub string = "/var/log/console/conman.key.pub"
 
+// Look up the creds for the input endpoints with retries
+func getPasswordsWithRetries(bmcXNames []string, maxTries, waitSecs int) map[string]compcreds.CompCredentials {
+	// NOTE: in update config thread
+
+	var passwords map[string]compcreds.CompCredentials = nil
+	for numTries := 0; numTries < maxTries; numTries++ {
+		log.Printf("Get passwords with retry: %d", numTries)
+		// get passwords from vault
+		passwords = getPasswords(bmcXNames)
+
+		// make sure we have something for all entries
+		foundAll := true
+		for _, nn := range bmcXNames {
+			_, ok := passwords[nn]
+			if !ok {
+				log.Printf("Missing credentials for %s", nn)
+				foundAll = false
+			}
+		}
+
+		// if we got all the passwords we are done
+		if foundAll {
+			log.Printf("Retrieved all passwords")
+			return passwords
+		}
+
+		// if we did not get all passwords try again until maxAttempts
+		log.Printf("Attempt %d - Only retrieved %d of %d River creds from vault, waiting and trying again...",
+			numTries, len(passwords), len(bmcXNames))
+		time.Sleep(time.Duration(waitSecs) * time.Second)
+	}
+
+	// We have reached max attempts, bail with what we have
+	log.Printf("Maximum password attempts reached, configuring conman with what we have.")
+	return passwords
+}
+
 // Look up the creds for the input endpoints
 func getPasswords(bmcXNames []string) map[string]compcreds.CompCredentials {
+	// NOTE: in update config thread
+
 	// if running in debug mode, skip hsm query
 	if debugOnly {
 		log.Print("DEBUGONLY mode - skipping creds query")
@@ -49,7 +88,7 @@ func getPasswords(bmcXNames []string) map[string]compcreds.CompCredentials {
 	}
 
 	// Get the passwords from Hashicorp Vault
-	log.Print("Gathing creds from vault")
+	log.Print("Gathering creds from vault")
 
 	// Create the Vault adapter and connect to Vault
 	ss, err := sstorage.NewVaultAdapter("secret")
@@ -72,6 +111,8 @@ func getPasswords(bmcXNames []string) map[string]compcreds.CompCredentials {
 
 // Ensure that Mountain node console key files are present.
 func ensureMountainConsoleKeysPresent() {
+	// NOTE: in update config thread
+
 	// if running in debug mode there won't be any nodes or vault present
 	if debugOnly {
 		log.Print("Running in debug mode - skipping mountain cred generation")
