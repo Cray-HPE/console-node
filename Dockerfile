@@ -23,9 +23,14 @@
 # Dockerfile for cray-console-node service
 
 # Build will be where we build the go binary
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2-build239 AS build
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2-build239 as build
 RUN set -eux \
     && zypper --non-interactive install go1.14
+
+# Apply security patches
+RUN zypper refresh
+RUN zypper patch -y --with-update --with-optional
+RUN zypper clean
 
 # Configure go env - installed as package but not quite configured
 ENV GOPATH=/usr/local/golib
@@ -43,11 +48,16 @@ RUN set -ex && go build -v -i -o /app/console_node $GOPATH/src/console_node
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2-build239
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2-build239 as base
 
 # Install conman application from package
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
+
+# Apply security patches
+RUN zypper refresh
+RUN zypper patch -y --with-update --with-optional
+RUN zypper clean
 
 # Copy in the needed files
 COPY --from=build /app/console_node /app/
