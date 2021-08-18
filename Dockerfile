@@ -27,6 +27,11 @@ FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as build
 RUN set -eux \
     && zypper --non-interactive install go1.14
 
+# Apply security patches
+RUN zypper refresh
+RUN zypper patch -y --with-update --with-optional
+RUN zypper clean
+
 # Configure go env - installed as package but not quite configured
 ENV GOPATH=/usr/local/golib
 RUN export GOPATH=$GOPATH
@@ -48,6 +53,11 @@ FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as base
 # Install conman application from package
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
+
+# Apply security patches
+RUN zypper refresh
+RUN zypper patch -y --with-update --with-optional
+RUN zypper clean
 
 # Copy in the needed files
 COPY --from=build /app/console_node /app/
