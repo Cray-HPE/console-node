@@ -64,11 +64,15 @@ COPY --from=build /app/console_node /app/
 COPY scripts/conman.conf /app/conman_base.conf
 COPY scripts/ssh-console /usr/bin
 
+# Change ownership of the app dir and switch to user 'nobody'
+RUN chown -Rv 65534:65534 /app /etc/conman.conf
+USER 65534:65534
+
 # Environment Variables -- Used by the HMS secure storage pkg
 ENV VAULT_ADDR="http://cray-vault.vault:8200"
 ENV VAULT_SKIP_VERIFY="true"
 
-RUN echo 'alias ll="ls -l"' > ~/.bashrc
-RUN echo 'alias vi="vim"' >> ~/.bashrc
+RUN echo 'alias ll="ls -l"' > /app/bashrc
+RUN echo 'alias vi="vim"' >> /app/bashrc
 
 ENTRYPOINT ["/app/console_node"]
