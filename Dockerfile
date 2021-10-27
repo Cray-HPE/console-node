@@ -29,7 +29,7 @@ RUN set -eux \
 
 # Apply security patches
 RUN zypper refresh
-RUN zypper patch -y --with-update --with-optional
+RUN bash -c 'zypper patch -y --with-update --with-optional ; rc=$? ; [ $rc -ne 103 ] && exit $rc; zypper patch -y --with-update'
 RUN zypper clean
 
 # Configure go env - installed as package but not quite configured
