@@ -23,13 +23,14 @@
 # Dockerfile for cray-console-node service
 
 # Build will be where we build the go binary
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2-build239 as build
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as build
 RUN set -eux \
     && zypper --non-interactive install go1.14
 
 # Apply security patches
+# NOTE: zypper patch may return 103 and require a recursive call when patching itself
 RUN zypper refresh
-RUN zypper patch -y --with-update --with-optional
+RUN bash -c 'zypper patch -y --with-update --with-optional ; rc=$? ; [ $rc -ne 103 ] && exit $rc; zypper patch -y --with-update'
 RUN zypper clean
 
 # Configure go env - installed as package but not quite configured
@@ -48,15 +49,16 @@ RUN set -ex && go build -v -i -o /app/console_node $GOPATH/src/console_node
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2-build239 as base
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as base
 
 # Install conman application from package
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
 
 # Apply security patches
+# NOTE: zypper patch may return 103 and require a recursive call when patching itself
 RUN zypper refresh
-RUN zypper patch -y --with-update --with-optional
+RUN bash -c 'zypper patch -y --with-update --with-optional ; rc=$? ; [ $rc -ne 103 ] && exit $rc; zypper patch -y --with-update'
 RUN zypper clean
 
 # Copy in the needed files
