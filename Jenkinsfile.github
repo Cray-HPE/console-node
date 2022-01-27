@@ -41,6 +41,7 @@ pipeline {
 		sh "whoami"
 		sh "sudo apt install python3-pip || true"
 		sh "cat /etc/os-release || true"
+		sh "wget https://bootstrap.pypa.io/get-pip.py && python3 get-pip.py --user"
                 sh "make runbuildprep"
             }
         }
