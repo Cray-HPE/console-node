@@ -54,7 +54,7 @@ RUN set -eux \
     && zypper --non-interactive install conman \
     && zypper --non-interactive install less \
     && zypper --non-interactive install --no-recommends vi \
-    && zypper --non-interactive install openssh \
+    && zypper --non-interactive install --no-recommends openssh \
     && zypper --non-interactive install jq \
     && zypper --non-interactive install curl \
     && zypper --non-interactive install tar
