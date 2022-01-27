@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Hewlett Packard Enterprise Development LP
+# Copyright 2020-2022 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -23,7 +23,7 @@
 # Dockerfile for cray-console-node service
 
 # Build will be where we build the go binary
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as build
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as build
 RUN set -eux \
     && zypper --non-interactive install go1.14
 
@@ -47,7 +47,7 @@ RUN set -ex && go build -v -i -o /app/console_node $GOPATH/src/console_node
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as base
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as base
 
 # Install conman application from package
 RUN set -eux \
