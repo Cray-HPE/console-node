@@ -53,21 +53,7 @@ FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as base
 RUN set -eux \
     && zypper --non-interactive install conman \
     && zypper --non-interactive install less \
-    && zypper --non-interactive install --no-recommends adobe-sourcecodepro-fonts \
-    && zypper --non-interactive install --no-recommends cantarell-fonts \
-    && zypper --non-interactive install --no-recommends dracut \
-    && zypper --non-interactive install --no-recommends gcr-viewer \
-    && zypper --non-interactive install --no-recommends gtk3-branding-SLE \
-    && zypper --non-interactive install --no-recommends gvfs-backends \
-    && zypper --non-interactive install --no-recommends gvfs-fuse \
-    && zypper --non-interactive install --no-recommends gvfs \
-    && zypper --non-interactive install --no-recommends postfix \
-    && zypper --non-interactive install --no-recommends sound-theme-freedesktop \
-    && zypper --non-interactive install --no-recommends udisks2 \
-    && zypper --non-interactive install --no-recommends udisks2-lang \
-    && zypper --non-interactive install --no-recommends wallpaper-branding-SLE \
-    && zypper --non-interactive install --no-recommends xkeyboard-config-lang \
-    && zypper --non-interactive install vi \
+    && zypper --non-interactive install --no-recommends vi \
     && zypper --non-interactive install openssh \
     && zypper --non-interactive install jq \
     && zypper --non-interactive install curl \
