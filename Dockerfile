@@ -51,7 +51,13 @@ FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.2
 
 # Install conman application from package
 RUN set -eux \
-    && zypper --non-interactive install conman less vi openssh jq curl tar
+    && zypper --non-interactive install conman \
+    && zypper --non-interactive install less \
+    && zypper --non-interactive install vi \
+    && zypper --non-interactive install openssh \
+    && zypper --non-interactive install jq \
+    && zypper --non-interactive install curl \
+    && zypper --non-interactive install tar
 
 # Apply security patches
 COPY zypper-refresh-patch-clean.sh /
