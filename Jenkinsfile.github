@@ -35,6 +35,9 @@ pipeline {
 
         stage("runBuildPrep") {
             steps {
+	        sh "zypper in pythonpython3-pip || true"
+		sh "apk add python3-pip || true"
+		sh "cat /etc/os-release || true"
                 sh "make runbuildprep"
             }
         }
