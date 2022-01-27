@@ -24,6 +24,10 @@
 
 # Build will be where we build the go binary
 FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as build
+
+RUN set -eux \
+    && zypper --non-interactive rl coreutils
+
 RUN set -eux \
     && zypper --non-interactive install go1.14
 
