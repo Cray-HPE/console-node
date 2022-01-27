@@ -35,13 +35,6 @@ pipeline {
 
         stage("runBuildPrep") {
             steps {
-	        sh "zypper in pythonpython3-pip || true"
-		sh "apk add python3-pip || true"
-		sh "apt install python3-pip || true"
-		sh "whoami"
-		sh "sudo apt install python3-pip || true"
-		sh "cat /etc/os-release || true"
-		sh "wget https://bootstrap.pypa.io/get-pip.py && python3 get-pip.py --user"
                 sh "make runbuildprep"
             }
         }
