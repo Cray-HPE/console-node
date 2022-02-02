@@ -64,6 +64,10 @@ RUN zypper --non-interactive removelock coreutils || true
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
 
+# NOTE: polkit is not needed but is included with one of the above packages.
+#  It has frequent security issues so just remove it here.
+RUN zypper --non-interactive rm polkit
+
 # Apply security patches
 COPY zypper-refresh-patch-clean.sh /
 RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
