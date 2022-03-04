@@ -20,7 +20,8 @@ cray-service:
     cray-console-node:
       name: cray-console-node
       image:
-        repository: cray/cray-console-node
+        repository: artifactory.algol60.net/csm-docker/stable/cray-console-node
+        # tag defaults to chart appVersion
       ports:
         - name: http
           containerPort: 26776
@@ -75,8 +76,8 @@ cray-service:
     log-forwarding:
       name: log-forwarding
       image:
-        repository: baseos/alpine
-        tag: 3.13.5
+        repository: alpine
+        tag: latest
       args: [/bin/sh, -c, 'tail -n 0 -F /tmp/consoleAgg/consoleAgg-${MY_POD_NAME}.log']
       env:
       - name: MY_POD_NAME
@@ -92,7 +93,7 @@ cray-service:
     cray-console-logs:
       name: cray-console-logs
       persistentVolumeClaim:
-        claimName: cray-console-operator-data-claim # created by console-operator
+        claimName: cray-console-operator-data-claim  # created by console-operator
     cray-console-node-agg:
       name: cray-console-node-agg
       persistentVolumeClaim:
@@ -100,7 +101,7 @@ cray-service:
   storageClass: ceph-cephfs-external
   persistentVolumeClaims:
     agg-data-claim:
-      name: agg-data-claim # will be prefixed with cray-console-node
+      name: agg-data-claim  # will be prefixed with cray-console-node
       accessModes:
       - ReadWriteMany
       resources:
@@ -112,3 +113,9 @@ cray-service:
     prefix: /apis/console-node
   strategy:
     type: Recreate
+
+alpine:
+  image:
+    repository: alpine
+    tag: latest
+    pullPolicy: IfNotPresent

@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Hewlett Packard Enterprise Development LP
+# Copyright 2020-2022 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -23,15 +23,19 @@
 # Dockerfile for cray-console-node service
 
 # Build will be where we build the go binary
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as build
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as build
+
+# The current sles15sp3 base image starts with a lock on coreutils, but this prevents a necessary
+# security patch from being applied. Thus, adding this command to remove the lock if it is
+# present.
+RUN zypper --non-interactive removelock coreutils || true
+
 RUN set -eux \
     && zypper --non-interactive install go1.14
 
 # Apply security patches
-# NOTE: zypper patch may return 103 and require a recursive call when patching itself
-RUN zypper refresh
-RUN bash -c 'zypper patch -y --with-update --with-optional ; rc=$? ; [ $rc -ne 103 ] && exit $rc; zypper patch -y --with-update'
-RUN zypper clean
+COPY zypper-refresh-patch-clean.sh /
+RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
 
 # Configure go env - installed as package but not quite configured
 ENV GOPATH=/usr/local/golib
@@ -49,17 +53,24 @@ RUN set -ex && go build -v -i -o /app/console_node $GOPATH/src/console_node
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp2:sles15sp2 as base
+FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as base
+
+# The current sles15sp3 base image starts with a lock on coreutils, but this prevents a necessary
+# security patch from being applied. Thus, adding this command to remove the lock if it is
+# present.
+RUN zypper --non-interactive removelock coreutils || true
 
 # Install conman application from package
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
 
+# NOTE: polkit is not needed but is included with one of the above packages.
+#  It has frequent security issues so just remove it here.
+RUN zypper --non-interactive rm polkit
+
 # Apply security patches
-# NOTE: zypper patch may return 103 and require a recursive call when patching itself
-RUN zypper refresh
-RUN bash -c 'zypper patch -y --with-update --with-optional ; rc=$? ; [ $rc -ne 103 ] && exit $rc; zypper patch -y --with-update'
-RUN zypper clean
+COPY zypper-refresh-patch-clean.sh /
+RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
 
 # Copy in the needed files
 COPY --from=build /app/console_node /app/
