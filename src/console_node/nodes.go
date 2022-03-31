@@ -27,12 +27,9 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -68,10 +65,6 @@ var maxAcquireMtn int = 200
 
 // Pause between each lookup for new node information
 var newNodeLookupSec int = 30
-
-// File to hold target number of node information - it will reside on
-// a shared file system so console-node pods can read what is set here
-const targetNodeFile string = "/var/log/console/TargetNodes.txt"
 
 // small helper function to insure correct number of nodes asked for
 func pinNumNodes(numAsk, numMax int) int {
@@ -243,67 +236,36 @@ func releaseNode(xname string) bool {
 
 // Update the number of target consoles per node pod
 func updateNodesPerPod() {
-	// NOTE: for the time being we will just put this information
-	//  into a simple text file on a pvc shared with console-operator
-	//  and console-node pods.  The console-operator will write changes
-	//  and the console-node pods will read periodically for changes.
-	//  This mechanism can be made more elegant later if needed but it
-	//  needs to be something that can be picked up by all console-node
-	//  pods without restarting them.
+	// Query the console-operator service directly to get the current
+	// number of target nodes per pod
+	type lNumNodes struct {
+		NumRvr int
+		NumMtn int
+	}
 
-	// NOTE: in doGetNewNodes thread
-
-	log.Printf("Updating nodes per pod")
-	// open the state file
-	sf, err := os.Open(targetNodeFile)
+	// make the call to console-operator
+	url := opBase + "/getNumNodesPerPod"
+	rb, _, err := getURL(url, nil)
 	if err != nil {
-		log.Printf("Unable to open target node file %s: %s", targetNodeFile, err)
+		log.Printf("Unable to get target number of nodes from console-operator: %s", err)
 		return
 	}
-	defer sf.Close()
 
-	// process the lines in the file
-	newRvr := -1
-	newMtn := -1
-	er := bufio.NewReader(sf)
-	for {
-		// read the next line
-		line, err := er.ReadString('\n')
-		if err != nil {
-			// done reading file
-			break
-		}
-
-		// find if this is a river line
-		const rvrTxt string = "River:"
-		const mtnTxt string = "Mountain:"
-
-		if pos := strings.Index(line, rvrTxt); pos >= 0 {
-			// peel out the number between : and eol
-			numStr := line[pos+len(rvrTxt) : len(line)-1]
-			newRvr, err = strconv.Atoi(numStr)
-			if err != nil {
-				log.Printf("Error reading number of river nodes: %s", err)
-			}
-		}
-
-		// find if this is a mountain line
-		if pos := strings.Index(line, mtnTxt); pos >= 0 {
-			// peel out the number between : and eol
-			numStr := line[pos+len(mtnTxt) : len(line)-1]
-			newMtn, err = strconv.Atoi(numStr)
-			if err != nil {
-				log.Printf("Error reading number of mountain nodes: %s", err)
-			}
-		}
+	// parse the return block and process
+	nn := lNumNodes{}
+	err = json.Unmarshal(rb, &nn)
+	if err != nil {
+		log.Printf("Error unmarshalling target node data: %s", err)
+		return
 	}
 
-	// set the new values with a little sanity checking
-	if newRvr >= 0 {
-		targetRvrNodes = newRvr
+	// process the returned values with a little sanity checking
+	if nn.NumRvr >= 0 && nn.NumRvr != targetRvrNodes {
+		log.Printf("Updated target river nodes to: %d", nn.NumRvr)
+		targetRvrNodes = nn.NumRvr
 	}
-	if newMtn >= 0 {
-		targetMtnNodes = newMtn
+	if nn.NumMtn >= 0 && nn.NumMtn != targetMtnNodes {
+		log.Printf("Updated target mountain nodes to: %d", nn.NumMtn)
+		targetMtnNodes = nn.NumMtn
 	}
-	log.Printf("  New target nodes - mtn: %d, rvr: %d", newMtn, newRvr)
 }

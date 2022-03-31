@@ -54,6 +54,9 @@ var httpListen string = ":26776"
 // global to signify service is shutting down
 var inShutdown bool = false
 
+// Variable to hold address of console-data service
+var opBase string = "http://cray-console-operator/console-operator/v0"
+
 // identify what the name of this pod is
 func setPodName() {
 	// The pod name is set as an env variable by the k8s system on pod
@@ -172,7 +175,7 @@ func main() {
 		// the program and short-circuit the shutdown logic below
 		log.Printf("Info: Server %s\n", httpSrv.ListenAndServe())
 	}()
-	log.Printf("Info: console-operator API listening on: %v\n", httpListen)
+	log.Printf("Info: console-node API listening on: %v\n", httpListen)
 
 	//////////////////
 	// Clean shutdown section
