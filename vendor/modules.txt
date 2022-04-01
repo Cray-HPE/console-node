@@ -54,6 +54,12 @@ github.com/pierrec/lz4/internal/xxh32
 github.com/ryanuber/go-glob
 # github.com/sirupsen/logrus v1.4.1
 github.com/sirupsen/logrus
+# github.com/tidwall/gjson v1.14.0
+github.com/tidwall/gjson
+# github.com/tidwall/match v1.1.1
+github.com/tidwall/match
+# github.com/tidwall/pretty v1.2.0
+github.com/tidwall/pretty
 # golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/ed25519/internal/edwards25519
