@@ -116,7 +116,7 @@ cray-service:
     cray-console-logs:
       name: cray-console-logs
       persistentVolumeClaim:
-        claimName: cray-console-operator-data-claim  # created by console-operator
+        claimName: cray-console-node-log-data-claim
     cray-console-node-agg:
       name: cray-console-node-agg
       persistentVolumeClaim:
@@ -130,6 +130,13 @@ cray-service:
       resources:
         requests:
           storage: 10Gi
+    log-data-claim:
+      name: log-data-claim  # will be prefixed with cray-console-node
+      accessModes:
+      - ReadWriteMany
+      resources:
+        requests:
+          storage: 100Gi
   ingress:
     enabled: true
     uri: " "

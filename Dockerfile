@@ -24,7 +24,7 @@
 # Dockerfile for cray-console-node service
 
 # Build will be where we build the go binary
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as build
+FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp3:sles15sp3 as build
 
 # The current sles15sp3 base image starts with a lock on coreutils, but this prevents a necessary
 # security patch from being applied. Thus, adding this command to remove the lock if it is
@@ -54,7 +54,8 @@ RUN set -ex && go build -v -i -o /app/console_node $GOPATH/src/console_node
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as base
+# NOTE: public sles image zypper repos do not include conman - need to figure that out
+FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp3:sles15sp3 as base
 
 # The current sles15sp3 base image starts with a lock on coreutils, but this prevents a necessary
 # security patch from being applied. Thus, adding this command to remove the lock if it is
@@ -63,11 +64,7 @@ RUN zypper --non-interactive removelock coreutils || true
 
 # Install conman application from package
 RUN set -eux \
-    && zypper --non-interactive install conman less vi openssh jq curl tar
-
-# NOTE: polkit is not needed but is included with one of the above packages.
-#  It has frequent security issues so just remove it here.
-RUN zypper --non-interactive rm polkit
+    && zypper --non-interactive install conman less vim openssh jq curl tar
 
 # Apply security patches
 COPY zypper-refresh-patch-clean.sh /

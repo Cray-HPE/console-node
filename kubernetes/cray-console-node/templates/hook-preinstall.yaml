@@ -27,8 +27,8 @@ metadata:
   name: console-node-post-upgrade
   namespace: "services"
   annotations:
-    "helm.sh/hook": post-upgrade,post-install
-    "helm.sh/hook-delete-policy": before-hook-creation, hook-succeeded
+    "helm.sh/hook": pre-upgrade,pre-install
+    "helm.sh/hook-delete-policy": before-hook-creation, hook-succeeded, hook-failed
 spec:
   template:
     spec:
@@ -38,11 +38,16 @@ spec:
       - name: hook1-container
         image: {{ .Values.alpine.image.repository }}:{{ .Values.alpine.image.tag }}
         imagePullPolicy: {{ .Values.alpine.image.pullPolicy }}
-        command: ['sh', '-c', 'mkdir -p /var/log/conman /var/log/conman.old /var/log/console && chown -Rv 65534:65534 /var/log && chmod -R 700 /var/log']
+        command: ['sh', '-c', 'cp -R /var/old/ /var/log']
         volumeMounts:
           - mountPath: /var/log
             name: cray-console-logs
+          - mountPath: /var/old
+            name: cray-console-transfer
       volumes:
         - name: cray-console-logs
           persistentVolumeClaim:
             claimName: cray-console-node-log-data-claim
+        - name: cray-console-transfer
+          persistentVolumeClaim:
+            claimName: cray-console-operator-data-claim
