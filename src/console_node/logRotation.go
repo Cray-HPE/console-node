@@ -1,26 +1,26 @@
-/*
- * Copyright 2021 Hewlett Packard Enterprise Development LP
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * (MIT License)
- */
+//
+//  MIT License
+//
+//  (C) Copyright 2021-2022 Hewlett Packard Enterprise Development LP
+//
+//  Permission is hereby granted, free of charge, to any person obtaining a
+//  copy of this software and associated documentation files (the "Software"),
+//  to deal in the Software without restriction, including without limitation
+//  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+//  and/or sell copies of the Software, and to permit persons to whom the
+//  Software is furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included
+//  in all copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+//  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+//  OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+//  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+//  OTHER DEALINGS IN THE SOFTWARE.
+//
 
 // This file contains the code needed to handle log rotation inside the console pod.
 
@@ -33,6 +33,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -43,8 +44,9 @@ const logRotDir string = "/var/log/conman.old"
 
 // NOTE: the configuration and state files will be on local storage
 //  since they need to be specific for this pod, but do not need to
-//  be persisted through pod restarts
-const logRotConfFile string = "/etc/logrotate.d/conman"
+//  be persisted through pod restarts.  They do need to be in locations
+//  that are writable by 'nobody' user
+const logRotConfFile string = "/app/logrotate.conman"
 const logRotStateFile string = "/tmp/rot_conman.state"
 
 // Globals for log rotation parameters
@@ -179,30 +181,36 @@ func updateLogRotateConf() {
 	//  entry in the file.
 
 	// Write out the contents of the file
-	fmt.Fprintln(lrf, "# Auto-generated logman configuration file.")
+	fmt.Fprintln(lrf, "# Auto-generated conman log rotation configuration file.")
 
 	// Add the aggregation file
 	if conAggLogFile != "" {
-		writeConfigEntry(lrf, conAggLogFile, logRotAggNumRotate, logRotAggFileSize)
+		conAggLogDir := filepath.Dir(conAggLogFile)
+		if len(conAggLogDir) > 0 {
+			writeConfigEntry(lrf, conAggLogFile, conAggLogDir, logRotAggNumRotate, logRotAggFileSize)
+		} else {
+			log.Printf("Invalid aggregation file name/dir, not added to log rotation: %s, %s", conAggLogFile, conAggLogDir)
+		}
 	}
 
 	// Add all the river nodes
+	consoleLogBackupDir := "/var/log/conman.old"
 	for xname := range currentRvrNodes {
 		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, logRotConNumRotate, logRotConFileSize)
+		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
 	}
 
 	// Add all the mountain nodes
 	for xname := range currentMtnNodes {
 		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, logRotConNumRotate, logRotConFileSize)
+		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
 	}
 
 	fmt.Fprintln(lrf, "")
 }
 
 // helper function to write out a single entry in the config file
-func writeConfigEntry(lrf *os.File, fileName string, numRotate int, fileSize string) {
+func writeConfigEntry(lrf *os.File, fileName string, oldDir string, numRotate int, fileSize string) {
 	fmt.Fprintf(lrf, "%s { \n", fileName)
 	fmt.Fprintln(lrf, "  nocompress")
 	fmt.Fprintln(lrf, "  missingok")
@@ -211,7 +219,7 @@ func writeConfigEntry(lrf *os.File, fileName string, numRotate int, fileSize str
 	fmt.Fprintln(lrf, "  nodelaycompress")
 	fmt.Fprintln(lrf, "  nomail")
 	fmt.Fprintln(lrf, "  notifempty")
-	fmt.Fprintln(lrf, "  olddir /var/log/conman.old")
+	fmt.Fprintf(lrf, "  olddir %s\n", oldDir)
 	fmt.Fprintf(lrf, "  rotate %d\n", numRotate)
 	fmt.Fprintf(lrf, "  size=%s\n", fileSize)
 	fmt.Fprintln(lrf, "}")
