@@ -33,6 +33,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -43,8 +44,9 @@ const logRotDir string = "/var/log/conman.old"
 
 // NOTE: the configuration and state files will be on local storage
 //  since they need to be specific for this pod, but do not need to
-//  be persisted through pod restarts
-const logRotConfFile string = "/etc/logrotate.d/conman"
+//  be persisted through pod restarts.  They do need to be in locations
+//  that are writable by 'nobody' user
+const logRotConfFile string = "/app/logrotate.conman"
 const logRotStateFile string = "/tmp/rot_conman.state"
 
 // Globals for log rotation parameters
@@ -179,30 +181,36 @@ func updateLogRotateConf() {
 	//  entry in the file.
 
 	// Write out the contents of the file
-	fmt.Fprintln(lrf, "# Auto-generated logman configuration file.")
+	fmt.Fprintln(lrf, "# Auto-generated conman log rotation configuration file.")
 
 	// Add the aggregation file
 	if conAggLogFile != "" {
-		writeConfigEntry(lrf, conAggLogFile, logRotAggNumRotate, logRotAggFileSize)
+		conAggLogDir := filepath.Dir(conAggLogFile)
+		if len(conAggLogDir) > 0 {
+			writeConfigEntry(lrf, conAggLogFile, conAggLogDir, logRotAggNumRotate, logRotAggFileSize)
+		} else {
+			log.Printf("Invalid aggregation file name/dir, not added to log rotation: %s, %s", conAggLogFile, conAggLogDir)
+		}
 	}
 
 	// Add all the river nodes
+	consoleLogBackupDir := "/var/log/conman.old"
 	for xname := range currentRvrNodes {
 		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, logRotConNumRotate, logRotConFileSize)
+		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
 	}
 
 	// Add all the mountain nodes
 	for xname := range currentMtnNodes {
 		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, logRotConNumRotate, logRotConFileSize)
+		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
 	}
 
 	fmt.Fprintln(lrf, "")
 }
 
 // helper function to write out a single entry in the config file
-func writeConfigEntry(lrf *os.File, fileName string, numRotate int, fileSize string) {
+func writeConfigEntry(lrf *os.File, fileName string, oldDir string, numRotate int, fileSize string) {
 	fmt.Fprintf(lrf, "%s { \n", fileName)
 	fmt.Fprintln(lrf, "  nocompress")
 	fmt.Fprintln(lrf, "  missingok")
@@ -211,7 +219,7 @@ func writeConfigEntry(lrf *os.File, fileName string, numRotate int, fileSize str
 	fmt.Fprintln(lrf, "  nodelaycompress")
 	fmt.Fprintln(lrf, "  nomail")
 	fmt.Fprintln(lrf, "  notifempty")
-	fmt.Fprintln(lrf, "  olddir /var/log/conman.old")
+	fmt.Fprintf(lrf, "  olddir %s\n", oldDir)
 	fmt.Fprintf(lrf, "  rotate %d\n", numRotate)
 	fmt.Fprintf(lrf, "  size=%s\n", fileSize)
 	fmt.Fprintln(lrf, "}")
