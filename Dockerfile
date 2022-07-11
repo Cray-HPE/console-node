@@ -24,15 +24,42 @@
 # Dockerfile for cray-console-node service
 
 # Build will be where we build the go binary
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as build
+FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.3 as build
 
 # The current sles15sp3 base image starts with a lock on coreutils, but this prevents a necessary
 # security patch from being applied. Thus, adding this command to remove the lock if it is
 # present.
 RUN zypper --non-interactive removelock coreutils || true
 
+ARG SLES_MIRROR=https://slemaster.us.cray.com/SUSE
+ARG ARCH=x86_64
 RUN set -eux \
-    && zypper --non-interactive install go1.14
+  && zypper --non-interactive rr --all \
+  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Basesystem/15-SP3/${ARCH}/product/ sles15sp3-Module-Basesystem-product \
+  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Basesystem/15-SP3/${ARCH}/update/ sles15sp3-Module-Basesystem-update \
+  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Development-Tools/15-SP3/${ARCH}/product/ sles15sp3-Module-Development-Tools-product \
+  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Development-Tools/15-SP3/${ARCH}/update/ sles15sp3-Module-Development-Tools-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Containers/15-SP3/${ARCH}/product/ sles15sp3-Module-Containers-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Containers/15-SP3/${ARCH}/update/ sles15sp3-Module-Containers-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Desktop-Applications/15-SP3/${ARCH}/product/ sles15sp3-Module-Desktop-Applications-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Desktop-Applications/15-SP3/${ARCH}/update/ sles15sp3-Module-Desktop-Applications-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-HPC/15-SP3/${ARCH}/product/ sles15sp3-Module-HPC-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-HPC/15-SP3/${ARCH}/update/ sles15sp3-Module-HPC-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Legacy/15-SP3/${ARCH}/product/ sles15sp3-Module-Legacy-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Legacy/15-SP3/${ARCH}/update/ sles15sp3-Module-Legacy-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Public-Cloud/15-SP3/${ARCH}/product/ sles15sp3-Module-Public-Cloud-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Public-Cloud/15-SP3/${ARCH}/update/ sles15sp3-Module-Public-Cloud-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Python2/15-SP3/${ARCH}/product/ sles15sp3-Module-Python2-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Python2/15-SP3/${ARCH}/update/ sles15sp3-Module-Python2-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Server-Applications/15-SP3/${ARCH}/product/ sles15sp3-Module-Server-Applications-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Server-Applications/15-SP3/${ARCH}/update/ sles15sp3-Module-Server-Applications-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Web-Scripting/15-SP3/${ARCH}/product/ sles15sp3-Module-Web-Scripting-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Web-Scripting/15-SP3/${ARCH}/update/ sles15sp3-Module-Web-Scripting-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Product-SLES/15-SP3/${ARCH}/product/ sles15sp3-Product-SLES-product \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Product-SLES/15-SP3/${ARCH}/update/ sles15sp3-Product-SLES-update \
+#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-INSTALLER/15-SP3/${ARCH}/update/ sles15sp3-SLE-INSTALLER-update \
+  && zypper --non-interactive clean \
+  && zypper --non-interactive install go1.16
 
 # Apply security patches
 COPY zypper-refresh-patch-clean.sh /
@@ -44,17 +71,30 @@ RUN export GOPATH=$GOPATH
 
 # Copy in all the necessary files
 COPY src/console_node $GOPATH/src/console_node
-
-# NOTE: no vendor code yet - commented out to make build work,
-#  add back in when vendor code is needed
 COPY vendor/ $GOPATH/src
 
 # Build configure_conman
-RUN set -ex && go build -v -i -o /app/console_node $GOPATH/src/console_node
+RUN set -ex \
+    && go env -w GO111MODULE=auto \
+    && go build -v -i -o /app/console_node $GOPATH/src/console_node
+
+# NOTE:
+#  We need to switch to the below image, but for now it does not include the 'nobody' user
+#  and we need to figure out why/how that user was removed from the image.
+#FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.3 as base
+#ARG SLES_MIRROR=https://slemaster.us.cray.com/SUSE
+#ARG ARCH=x86_64
+#RUN set -eux \
+#    && zypper --non-interactive rr --all \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Basesystem/15-SP3/${ARCH}/product/ sles15sp3-Module-Basesystem-product \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Basesystem/15-SP3/${ARCH}/update/ sles15sp3-Module-Basesystem-update \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-HPC/15-SP3/${ARCH}/product/ sles15sp3-Module-HPC-product \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-HPC/15-SP3/${ARCH}/update/ sles15sp3-Module-HPC-update \
+#    && zypper --non-interactive install conman less vi openssh jq curl tar
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.dev.cray.com/baseos-docker-master-local/sles15sp3:sles15sp3 as base
+FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp3:sles15sp3 as base
 
 # The current sles15sp3 base image starts with a lock on coreutils, but this prevents a necessary
 # security patch from being applied. Thus, adding this command to remove the lock if it is
@@ -64,10 +104,6 @@ RUN zypper --non-interactive removelock coreutils || true
 # Install conman application from package
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
-
-# NOTE: polkit is not needed but is included with one of the above packages.
-#  It has frequent security issues so just remove it here.
-RUN zypper --non-interactive rm polkit
 
 # Apply security patches
 COPY zypper-refresh-patch-clean.sh /
