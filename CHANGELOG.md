@@ -8,5 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
  - CASMCMS-7830: Update the base image to newer version and resolve dev.cray.com addresses.
+ - CASMCMS-8055: Add pod anti-affinity to helm chart.
 
 [1.0.0] - (no date)
