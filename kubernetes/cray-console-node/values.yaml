@@ -130,6 +130,18 @@ cray-service:
       resources:
         requests:
           storage: 10Gi
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - cray-console-node
   ingress:
     enabled: true
     uri: " "
