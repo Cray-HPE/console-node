@@ -33,7 +33,7 @@
 console_node_config:
   cray_console_node_log_identifier: 'ID'
   cray_console_node_smd_url: 'http://cray-smd'
-  cray_console_node_rf_endpoint: 'hsm/v1/Inventory/RedfishEndpoints'
+  cray_console_node_rf_endpoint: 'hsm/v2/Inventory/RedfishEndpoints'
 
 cray-service:
   type: StatefulSet
