@@ -47,6 +47,16 @@ type nodeConsoleInfo struct {
 	Role     string // role of the node
 }
 
+// Function to determine if a node is Mountain hardware
+func (node nodeConsoleInfo) isMountain() bool {
+	return node.Class == "Mountain" || node.Class == "Hill"
+}
+
+// Function to determine if a node is River hardware
+func (node nodeConsoleInfo) isRiver() bool {
+	return node.Class == "River"
+}
+
 // Provide a function to convert struct to string
 func (nc nodeConsoleInfo) String() string {
 	return fmt.Sprintf("NodeName:%s, BmcName:%s, BmcFqdn:%s, Class:%s, NID:%d, Role:%s",
@@ -113,11 +123,11 @@ func doGetNewNodes() {
 			// process the new nodes
 			for i, node := range newNodes {
 				log.Printf("  Processing node: %s", node.String())
-				if node.Class == "River" {
+				if node.isRiver() {
 					currentRvrNodes[node.NodeName] = &newNodes[i]
 					log.Printf("  Adding new river node: %s", node.String())
 					changed = true
-				} else if node.Class == "Mountain" {
+				} else if node.isMountain() {
 					currentMtnNodes[node.NodeName] = &newNodes[i]
 					log.Printf("  Adding new mtn node: %s", node.String())
 					changed = true
