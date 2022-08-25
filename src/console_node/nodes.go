@@ -72,7 +72,7 @@ var currentRvrNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleIn
 var targetRvrNodes int = -1
 var targetMtnNodes int = -1
 
-// Number of nodes to get per acquasition query
+// Number of nodes to get per acquisition query
 var maxAcquireRvr int = 500
 var maxAcquireMtn int = 200
 
@@ -114,7 +114,7 @@ func doGetNewNodes() {
 		numRvr := pinNumNodes(targetRvrNodes-len(currentRvrNodes), maxAcquireRvr)
 		numMtn := pinNumNodes(targetMtnNodes-len(currentMtnNodes), maxAcquireMtn)
 
-		// attempt to aquire more nodes
+		// attempt to acquire more nodes
 		if numRvr > 0 || numMtn > 0 {
 			// NOTE: this should be the ONLY place where the maps of
 			//  current nodes is updated!!!

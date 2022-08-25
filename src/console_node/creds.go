@@ -99,7 +99,7 @@ func getPasswords(bmcXNames []string) map[string]compcreds.CompCredentials {
 	// Initialize the CompCredStore struct with the Vault adapter.
 	ccs := compcreds.NewCompCredStore("hms-creds", ss)
 
-	// Read the credentails for a list of components from the CompCredStore
+	// Read the credentials for a list of components from the CompCredStore
 	// (backed by Vault).
 	ccreds, err := ccs.GetCompCreds(bmcXNames)
 	if err != nil {
