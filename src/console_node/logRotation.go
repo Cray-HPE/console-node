@@ -177,7 +177,7 @@ func updateLogRotateConf() {
 	defer lrf.Close()
 
 	// We need to do log rotation ONLY for the logs this pod is
-	//  actively managing.  Each log file needs to be given a seprate
+	//  actively managing.  Each log file needs to be given a separate
 	//  entry in the file.
 
 	// Write out the contents of the file
