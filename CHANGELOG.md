@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
  - Spelling corrections.
+ - CASMCMS-8076: Changed base image to use sp4
 
 ## [1.6.0] - 2022-08-04
 ### Changed
