@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
  - CASMCMS-8252: Update Chart with correct image and chart version strings during builds.
 
+## [1.7.1] - 2022-12-20
+### Added
+- Add Artifactory authentication to Jenkinsfile
+
 ## [1.7.0] - 2022-09-12
 ### Changed
  - Spelling corrections.
