@@ -23,7 +23,7 @@
 #
 apiVersion: v2
 name: cray-console-node
-version: 0.0.0
+version: 0.0.0-chart
 description: Kubernetes resources for cray-console-node
 keywords:
 - cray-console
@@ -38,11 +38,11 @@ dependencies:
 maintainers:
 - name: dlaine-hpe
   email: laine@hpe.com
-appVersion: 0.0.0
+appVersion: 0.0.0-image
 annotations:
   artifacthub.io/images: |
     - name: cray-console-node
-      image: artifactory.algol60.net/csm-docker/stable/cray-console-node:0.0.0
+      image: artifactory.algol60.net/csm-docker/stable/cray-console-node:0.0.0-image
     - name: alpine
       image: alpine:latest
   artifacthub.io/license: MIT
