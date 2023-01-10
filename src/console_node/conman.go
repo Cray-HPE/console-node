@@ -119,7 +119,7 @@ func runConman() {
 // Function to send SIGHUP to running conmand process
 func signalConmanHUP() {
 	// send interrupt to tell conman to re-initialize - this is usually called
-	//  after a log rotataion and all log files will be regenerated
+	//  after a log rotation and all log files will be regenerated
 	if command != nil {
 		log.Print("Signaling conman with SIGHUP")
 		command.Process.Signal(syscall.SIGHUP)
@@ -204,7 +204,7 @@ func executeConman() {
 	log.Print("Conmand process has exited")
 }
 
-// read the begining of the input file to see if we should skip this update
+// read the beginning of the input file to see if we should skip this update
 func willUpdateConfig(fp *os.File) bool {
 	// if the first line of the base configuration file has '# UPDATE_CONFIG=FALSE'
 	// then bail on the update
@@ -234,10 +234,10 @@ func willUpdateConfig(fp *os.File) bool {
 		//	log.Printf("Didn't find update string")
 	}
 
-	// reset the file pointer so later read starts at begining of file
+	// reset the file pointer so later read starts at beginning of file
 	_, err = fp.Seek(0, 0)
 	if err != nil {
-		log.Printf("Reset of file pointer to begining of file failed:%s", err)
+		log.Printf("Reset of file pointer to beginning of file failed:%s", err)
 	}
 
 	return retVal

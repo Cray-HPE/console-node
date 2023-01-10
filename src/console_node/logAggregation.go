@@ -58,7 +58,7 @@ func aggregateFile(xname string) bool {
 
 	newFile := false
 	if _, ok := tailThreads[xname]; !ok {
-		// indicte we are starting to watch this one
+		// indicate we are starting to watch this one
 		newFile = true
 		// set up a context and a cancel function for this thead
 		ctx, cancel := context.WithCancel(context.Background())
@@ -142,7 +142,7 @@ func watchConsoleLogFile(ctx context.Context, xname string) {
 			// done tailing this file - exit
 			log.Printf("WATCH_CONSOLE: %s exiting gracefully...", xname)
 
-			// recieved signal to stop so exit gracefully
+			// received signal to stop so exit gracefully
 			// NOTE: unless this is shut down correctly, it will crash when
 			//  the next poll interval hits after this removal.
 			tf.Config.Poll = false
