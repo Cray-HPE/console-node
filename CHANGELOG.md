@@ -10,12 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - CASMCMS-8252: Enabled building of unstable artifacts
  - CASMCMS-8252: Updated header of update_versions.conf to reflect new tool options
  - Spelling corrections.
+
 ### Fixed
  - Update Chart with correct image and chart version strings during builds.
  - CASMCMS-8252: Update Chart with correct image and chart version strings during builds.
-
-### Changed
-
 
 ## [1.6.1] - 2023-01-06
 ### Added
