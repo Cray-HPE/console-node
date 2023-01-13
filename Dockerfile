@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright 2020-2022 Hewlett Packard Enterprise Development LP
+# (C) Copyright 2020-2023 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -78,23 +78,18 @@ RUN set -ex \
     && go env -w GO111MODULE=auto \
     && go build -v -i -o /app/console_node $GOPATH/src/console_node
 
-# NOTE:
-#  We need to switch to the below image, but for now it does not include the 'nobody' user
-#  and we need to figure out why/how that user was removed from the image.
-#FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.3 as base
-#ARG SLES_MIRROR=https://slemaster.us.cray.com/SUSE
-#ARG ARCH=x86_64
-#RUN set -eux \
-#    && zypper --non-interactive rr --all \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Basesystem/15-SP3/${ARCH}/product/ sles15sp3-Module-Basesystem-product \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Basesystem/15-SP3/${ARCH}/update/ sles15sp3-Module-Basesystem-update \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-HPC/15-SP3/${ARCH}/product/ sles15sp3-Module-HPC-product \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-HPC/15-SP3/${ARCH}/update/ sles15sp3-Module-HPC-update \
-#    && zypper --non-interactive install conman less vi openssh jq curl tar
-
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp3:sles15sp3 as base
+FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.3 as base
+ARG SLES_MIRROR=https://slemaster.us.cray.com/SUSE
+ARG ARCH=x86_64
+RUN set -eux \
+    && zypper --non-interactive rr --all \
+    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Basesystem/15-SP3/${ARCH}/product/ sles15sp3-Module-Basesystem-product \
+    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Basesystem/15-SP3/${ARCH}/update/ sles15sp3-Module-Basesystem-update \
+    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-HPC/15-SP3/${ARCH}/product/ sles15sp3-Module-HPC-product \
+    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-HPC/15-SP3/${ARCH}/update/ sles15sp3-Module-HPC-update \
+    && zypper --non-interactive install conman less vi openssh jq curl tar
 
 # The current sles15sp3 base image starts with a lock on coreutils, but this prevents a necessary
 # security patch from being applied. Thus, adding this command to remove the lock if it is
@@ -105,10 +100,6 @@ RUN zypper --non-interactive removelock coreutils || true
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
 
-# NOTE: polkit is not needed but is included with one of the above packages.
-#  It has frequent security issues so just remove it here.
-RUN zypper --non-interactive rm polkit
-
 # Apply security patches
 COPY zypper-refresh-patch-clean.sh /
 RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
@@ -117,6 +108,10 @@ RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
 COPY --from=build /app/console_node /app/
 COPY scripts/conman.conf /app/conman_base.conf
 COPY scripts/ssh-console /usr/bin
+
+# Add in the user 'nobody'
+# NOTE: This can be removed once the Algol60 base SLES version comes with the 'nobody' user.
+RUN groupadd -g 65534 nobody && useradd -g 65534 -u 65534 -m -d /var/lib/nobody -s /bin/bash nobody
 
 # Change ownership of the app dir and switch to user 'nobody'
 RUN chown -Rv 65534:65534 /app /etc/conman.conf
