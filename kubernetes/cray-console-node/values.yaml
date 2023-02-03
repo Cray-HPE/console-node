@@ -43,7 +43,7 @@ cray-service:
     cray-console-node:
       name: cray-console-node
       image:
-        repository: artifactory.algol60.net/csm-docker/stable/cray-console-node
+        repository: artifactory.algol60.net/csm-docker/S-T-A-B-L-E/cray-console-node
         # tag defaults to chart appVersion
       ports:
         - name: http
