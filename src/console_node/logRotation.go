@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2022 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2023 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -42,10 +42,10 @@ import (
 // NOTE: the backup directory is on the shared console-operator pvc
 const logRotDir string = "/var/log/conman.old"
 
-// NOTE: the configuration and state files will be on local storage
-//  since they need to be specific for this pod, but do not need to
-//  be persisted through pod restarts.  They do need to be in locations
-//  that are writable by 'nobody' user
+// The configuration and state files will be on local storage
+// since they need to be specific for this pod, but do not need to
+// be persisted through pod restarts.  They do need to be in locations
+// that are writable by 'nobody' user
 const logRotConfFile string = "/app/logrotate.conman"
 const logRotStateFile string = "/tmp/rot_conman.state"
 

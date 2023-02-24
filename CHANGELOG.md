@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.7.3] - 2023-02-24
+### Changed
+- CASMCMS-8423: Linting changes for new version of gofmt.
+
 ## [1.7.2] - 2023-2-2
 ### Changed
 - CASMINST-5878: Remove post-install hook that depends on console-operator PVC.
