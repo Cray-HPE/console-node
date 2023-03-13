@@ -40,43 +40,68 @@ import (
 	"github.com/hpcloud/tail"
 )
 
-// Global vars
-var conAggMutex = &sync.Mutex{}
-var conAggLogger *log.Logger = nil
+type LogAggService interface {
+	ConAggLogFile() string
+	aggregateFile(xname string) bool
+	respinAggLog()
+	killTails()
+	stopTailing(xname string)
+	logPipeOutput(readPipe *io.ReadCloser, desc string)
+}
 
-// Globals to build up the aggregation file name for this pod
-const conAggLogFileBase string = "/tmp/consoleAgg/consoleAgg-"
+type LogAggManager struct {
+	sync.Mutex
+	conAggLogger      *log.Logger
+	conAggLogFileBase string
+	conAggLogFile     string
+	tailThreads       map[string]*context.CancelFunc
+}
 
-var conAggLogFile string = ""
+func NewLogAggService() *LogAggManager {
+	var conAggLogger *log.Logger = nil
+	const conAggLogFileBase string = "/tmp/consoleAgg/consoleAgg-"
+	// set the aggregation log name based on the pod name
+	var conAggLogFile string = conAggLogFileBase + podName + ".log"
+	// map to cancel threads tailing log files
+	var tailThreads map[string]*context.CancelFunc = make(map[string]*context.CancelFunc)
 
-// map to cancel threads tailing log files
-var tailThreads map[string]*context.CancelFunc = make(map[string]*context.CancelFunc)
+	return &LogAggManager{
+		conAggLogger:      conAggLogger,
+		conAggLogFileBase: conAggLogFileBase,
+		conAggLogFile:     conAggLogFile,
+		tailThreads:       tailThreads,
+	}
+}
+
+func (lm *LogAggManager) ConAggLogFile() string {
+	return lm.conAggLogFile
+}
 
 // Set up tailing a log file to add to the aggregation file
-func aggregateFile(xname string) bool {
+func (lm *LogAggManager) aggregateFile(xname string) bool {
 	// NOTE: in update config thread
 
 	newFile := false
-	if _, ok := tailThreads[xname]; !ok {
+	if _, ok := lm.tailThreads[xname]; !ok {
 		// indicate we are starting to watch this one
 		newFile = true
 		// set up a context and a cancel function for this thead
 		ctx, cancel := context.WithCancel(context.Background())
-		tailThreads[xname] = &cancel
+		lm.tailThreads[xname] = &cancel
 
 		// record being tracked and forward log file contents
-		go watchConsoleLogFile(ctx, xname)
+		go lm.watchConsoleLogFile(ctx, xname)
 	}
 	return newFile
 }
 
 // Test function to kill the 'tail' functionality when 'killTails.txt' is created
-func killTails() {
+func (lm *LogAggManager) killTails() {
 	for {
 		// check if /var/log/console/killTails.txt exists
 		if _, err := os.Stat("/var/log/console/killTails.txt"); err == nil {
 			// now remove all the tail functions
-			for k, tt := range tailThreads {
+			for k, tt := range lm.tailThreads {
 				log.Printf("Cancelling tail for %s", k)
 				(*tt)()
 			}
@@ -97,21 +122,21 @@ func killTails() {
 }
 
 // Function to remove a node from being tailed
-func stopTailing(xname string) {
-	if tt, ok := tailThreads[xname]; ok {
+func (lm *LogAggManager) stopTailing(xname string) {
+	if tt, ok := lm.tailThreads[xname]; ok {
 		log.Printf("Halting tail of %s", xname)
 		// call the cancel function
 		(*tt)()
 
 		// remove from map
-		delete(tailThreads, xname)
+		delete(lm.tailThreads, xname)
 	} else {
 		log.Printf("Stop tailing: could not find %s in tailThreads map", xname)
 	}
 }
 
 // Watch the input file and append any new content to the aggregate console log file
-func watchConsoleLogFile(ctx context.Context, xname string) {
+func (lm *LogAggManager) watchConsoleLogFile(ctx context.Context, xname string) {
 	// Keep tailing the input file until the context.Done() is called, then exit
 
 	// Configuration for tail function -
@@ -151,51 +176,51 @@ func watchConsoleLogFile(ctx context.Context, xname string) {
 			return
 		case line := <-tf.Lines:
 			// output the line from the channel
-			writeToAggLog(fmt.Sprintf("console.hostname: %s %s", xname, line.Text))
+			lm.writeToAggLog(fmt.Sprintf("console.hostname: %s %s", xname, line.Text))
 		}
 	}
 }
 
 // function to manage concurrent writes to the aggregation log
-func writeToAggLog(str string) {
-	conAggMutex.Lock()
-	defer conAggMutex.Unlock()
-	if conAggLogger != nil {
-		conAggLogger.Printf("%s", str)
+func (lm *LogAggManager) writeToAggLog(str string) {
+	lm.Lock()
+	defer lm.Unlock()
+	if lm.conAggLogger != nil {
+		lm.conAggLogger.Printf("%s", str)
 	}
 }
 
 // Function to close/open a new aggregation logger
-func respinAggLog() {
+func (lm *LogAggManager) respinAggLog() {
 	// when the file changes due to log rotation we must recreate the logger
-	conAggMutex.Lock()
-	defer conAggMutex.Unlock()
+	lm.Lock()
+	defer lm.Unlock()
 
 	// make sure the directory exists to put the file in place
-	pos := strings.LastIndex(conAggLogFile, "/")
+	pos := strings.LastIndex(lm.conAggLogFile, "/")
 	if pos < 0 {
-		log.Printf("Error: console log aggregation file name: %s", conAggLogFile)
+		log.Printf("Error: console log aggregation file name: %s", lm.conAggLogFile)
 		return
 	}
-	conAggLogDir := conAggLogFile[:pos]
+	conAggLogDir := lm.conAggLogFile[:pos]
 	if _, err := ensureDirPresent(conAggLogDir, 0766); err != nil {
 		log.Printf("Failed to respin aggregation file: %s", err)
 		return
 	}
 
 	log.Printf("Respinning aggregation log")
-	calf, err := os.OpenFile(conAggLogFile, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0600)
+	calf, err := os.OpenFile(lm.conAggLogFile, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Printf("Could not open console aggregate log file: %s", err)
 	} else {
-		log.Printf("Restarted aggregation log file: %s", conAggLogFile)
-		conAggLogger = log.New(calf, "", 0)
-		conAggLogger.Print("Starting aggregation log")
+		log.Printf("Restarted aggregation log file: %s", lm.conAggLogFile)
+		lm.conAggLogger = log.New(calf, "", 0)
+		lm.conAggLogger.Print("Starting aggregation log")
 	}
 }
 
 // Take the output of the pipe and log it
-func logPipeOutput(readPipe *io.ReadCloser, desc string) {
+func (*LogAggManager) logPipeOutput(readPipe *io.ReadCloser, desc string) {
 	log.Printf("Starting log of conmand %s output", desc)
 	er := bufio.NewReader(*readPipe)
 	for {

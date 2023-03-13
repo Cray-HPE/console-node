@@ -39,38 +39,69 @@ import (
 	"time"
 )
 
-// NOTE: the backup directory is on the shared console-operator pvc
-const logRotDir string = "/var/log/conman.old"
+type LogRotateService interface {
+	rotate()
+	updateLogRotateConf()
+}
 
+type LogRotateManager struct {
+	currentNodeService CurrentNodeService
+	logAggService      LogAggService
+	conmanService      ConmanService
+	logRotDir          string
+	logRotConfFile     string
+	logRotStateFile    string
+	logRotEnabled      bool
+	logRotCheckFreqSec int
+	logRotConFileSize  string
+	logRotConNumRotate int
+	logRotAggFileSize  string
+	logRotAggNumRotate int
+}
+
+// NOTE: the backup directory is on the shared console-operator pvc
 // The configuration and state files will be on local storage
 // since they need to be specific for this pod, but do not need to
 // be persisted through pod restarts.  They do need to be in locations
 // that are writable by 'nobody' user
-const logRotConfFile string = "/app/logrotate.conman"
-const logRotStateFile string = "/tmp/rot_conman.state"
+func NewLogRotateService(cns CurrentNodeService, las LogAggService, cs ConmanService) *LogRotateManager {
+	// NOTE: eventually make these available to change through the REST api
+	var logRotEnabled bool = true
+	var logRotCheckFreqSec = 600
+	var logRotConFileSize string = "5M"  // size of the console log file to rotate
+	var logRotConNumRotate int = 2       // number of console log backup copies to keep
+	var logRotAggFileSize string = "20M" // size of the aggregation file to rotate
+	var logRotAggNumRotate int = 1       // number of aggregation backup copies to keep
 
-// Globals for log rotation parameters
-// NOTE: eventually make these available to change through the REST api
-var logRotEnabled bool = true
-var logRotCheckFreqSec = 600
-var logRotConFileSize string = "5M"  // size of the console log file to rotate
-var logRotConNumRotate int = 2       // number of console log backup copies to keep
-var logRotAggFileSize string = "20M" // size of the aggregation file to rotate
-var logRotAggNumRotate int = 1       // number of aggregation backup copies to keep
+	return &LogRotateManager{
+		currentNodeService: cns,
+		logAggService:      las,
+		conmanService:      cs,
+		logRotDir:          "/var/log/conman.old",
+		logRotConfFile:     "/app/logrotate.conman",
+		logRotStateFile:    "/tmp/rot_conman.state",
+		logRotEnabled:      logRotEnabled,
+		logRotCheckFreqSec: logRotCheckFreqSec,
+		logRotConFileSize:  logRotConFileSize,
+		logRotConNumRotate: logRotConNumRotate,
+		logRotAggFileSize:  logRotAggFileSize,
+		logRotAggNumRotate: logRotAggNumRotate,
+	}
+}
 
 // Initialize and start log rotation
-func logRotate() {
+func (lm LogRotateManager) rotate() {
 	// Set up the 'backups' directory for logrotation to use
-	ensureDirPresent(logRotDir, 0755)
+	ensureDirPresent(lm.logRotDir, 0755)
 
 	// Check for log rotation env vars
 	if val := os.Getenv("LOG_ROTATE_ENABLE"); val != "" {
 		log.Printf("Found LOG_ROTATE_ENABLE: %s", val)
-		logRotEnabled = isTrue(val)
+		lm.logRotEnabled = lm.isTrue(val)
 	}
 	if val := os.Getenv("LOG_ROTATE_FILE_SIZE"); val != "" {
 		log.Printf("Found LOG_ROTATE_FILE_SIZE: %s", val)
-		logRotConFileSize = val
+		lm.logRotConFileSize = val
 	}
 	if val := os.Getenv("LOG_ROTATE_SEC_FREQ"); val != "" {
 		log.Printf("Found LOG_ROTATE_SEC_FREQ: %s", val)
@@ -78,7 +109,7 @@ func logRotate() {
 		if err != nil {
 			log.Printf("Error converting log rotation freqency - expected an integer:%s", err)
 		} else {
-			logRotCheckFreqSec = envFreq
+			lm.logRotCheckFreqSec = envFreq
 		}
 	}
 	if val := os.Getenv("LOG_ROTATE_NUM_KEEP"); val != "" {
@@ -87,24 +118,24 @@ func logRotate() {
 		if err != nil {
 			log.Printf("Error converting log rotation freqency - expected an integer:%s", err)
 		} else {
-			logRotConNumRotate = envNum
+			lm.logRotConNumRotate = envNum
 		}
 	}
 
 	// log the log rotation parameters
-	log.Printf("LOG ROTATE: Log rotation enabled: %v, Check Freq Sec: %d", logRotEnabled, logRotCheckFreqSec)
-	log.Printf("LOG ROTATE: Log rotation console file size: %s, num rotate: %d", logRotConFileSize, logRotConNumRotate)
-	log.Printf("LOG ROTATE: Log rotation aggregation file size: %s, num rotate: %d", logRotAggFileSize, logRotAggNumRotate)
+	log.Printf("LOG ROTATE: Log rotation enabled: %v, Check Freq Sec: %d", lm.logRotEnabled, lm.logRotCheckFreqSec)
+	log.Printf("LOG ROTATE: Log rotation console file size: %s, num rotate: %d", lm.logRotConFileSize, lm.logRotConNumRotate)
+	log.Printf("LOG ROTATE: Log rotation aggregation file size: %s, num rotate: %d", lm.logRotAggFileSize, lm.logRotAggNumRotate)
 
 	// Create the log rotation configuration file
-	doInitialConfFileUpdate()
+	lm.doInitialConfFileUpdate()
 
 	// Start the log rotation thread
-	go doLogRotate()
+	go lm.doLogRotate()
 }
 
 // All the ways a string could be interpreted as 'true'
-func isTrue(str string) bool {
+func (LogRotateManager) isTrue(str string) bool {
 	// convert to lower case to remove capitalization as an issue
 	lStr := strings.ToLower(str)
 
@@ -123,20 +154,15 @@ func isTrue(str string) bool {
 }
 
 // Do the initial log rotation file update in a thread safe manner
-func doInitialConfFileUpdate() {
+func (lm LogRotateManager) doInitialConfFileUpdate() {
 	// Make sure the initial log rotation file doesn't miss or overwrite
 	// the initial batch of consoles being monitored.
-
-	// put a lock on the current nodes while writing the file
-	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
-
 	// update the file now that it is safe to do so
-	updateLogRotateConf()
+	lm.updateLogRotateConf()
 }
 
 // Create the log rotation configuration file
-func updateLogRotateConf() {
+func (lm LogRotateManager) updateLogRotateConf() {
 	// NOTE: calling function needs to ensure current node maps are
 	//  thread protected
 	// NOTE: in doGetNewNodes thread
@@ -167,9 +193,13 @@ func updateLogRotateConf() {
 		# }
 	*/
 
+	// put a lock on the current nodes while writing the file
+	currentMtnNodes := lm.currentNodeService.GetMtnNodes().CurrentNodes()
+	currentRvrNodes := lm.currentNodeService.GetRvrNodes().CurrentNodes()
+
 	// Open the file for writing
-	log.Printf("LOG ROTATE: Opening conman log rotation configuration file for output: %s", logRotConfFile)
-	lrf, err := os.Create(logRotConfFile)
+	log.Printf("LOG ROTATE: Opening conman log rotation configuration file for output: %s", lm.logRotConfFile)
+	lrf, err := os.Create(lm.logRotConfFile)
 	if err != nil {
 		// log the problem and panic
 		log.Printf("Unable to open config file to write: %s", err)
@@ -183,11 +213,13 @@ func updateLogRotateConf() {
 	// Write out the contents of the file
 	fmt.Fprintln(lrf, "# Auto-generated conman log rotation configuration file.")
 
+	conAggLogFile := lm.logAggService.ConAggLogFile()
+
 	// Add the aggregation file
 	if conAggLogFile != "" {
 		conAggLogDir := filepath.Dir(conAggLogFile)
 		if len(conAggLogDir) > 0 {
-			writeConfigEntry(lrf, conAggLogFile, conAggLogDir, logRotAggNumRotate, logRotAggFileSize)
+			lm.writeConfigEntry(lrf, conAggLogFile, conAggLogDir, lm.logRotAggNumRotate, lm.logRotAggFileSize)
 		} else {
 			log.Printf("Invalid aggregation file name/dir, not added to log rotation: %s, %s", conAggLogFile, conAggLogDir)
 		}
@@ -197,20 +229,20 @@ func updateLogRotateConf() {
 	consoleLogBackupDir := "/var/log/conman.old"
 	for xname := range currentRvrNodes {
 		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
+		lm.writeConfigEntry(lrf, fn, consoleLogBackupDir, lm.logRotConNumRotate, lm.logRotConFileSize)
 	}
 
 	// Add all the mountain nodes
 	for xname := range currentMtnNodes {
 		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
+		lm.writeConfigEntry(lrf, fn, consoleLogBackupDir, lm.logRotConNumRotate, lm.logRotConFileSize)
 	}
 
 	fmt.Fprintln(lrf, "")
 }
 
 // helper function to write out a single entry in the config file
-func writeConfigEntry(lrf *os.File, fileName string, oldDir string, numRotate int, fileSize string) {
+func (LogRotateManager) writeConfigEntry(lrf *os.File, fileName string, oldDir string, numRotate int, fileSize string) {
 	fmt.Fprintf(lrf, "%s { \n", fileName)
 	fmt.Fprintln(lrf, "  nocompress")
 	fmt.Fprintln(lrf, "  missingok")
@@ -226,9 +258,10 @@ func writeConfigEntry(lrf *os.File, fileName string, oldDir string, numRotate in
 }
 
 // Parse the timestamp from the input line
-func parseTimestamp(line string) (string, time.Time, bool, bool) {
+func (lm LogRotateManager) parseTimestamp(line string) (string, time.Time, bool, bool) {
 	// NOTE: we are expecting a line in the format of:
 	//  "/var/log/conman/console.xname" YYYY-MM-DD-HH-MM-SS
+	conAggLogFile := lm.logAggService.ConAggLogFile()
 	var nodeName string
 	var fd time.Time
 	isCon := false
@@ -287,7 +320,7 @@ func parseTimestamp(line string) (string, time.Time, bool, bool) {
 }
 
 // Function to collect most recent log rotation timestamps
-func readLogRotTimestamps(fileStamp map[string]time.Time) (conChanged, aggChanged bool) {
+func (lm LogRotateManager) readLogRotTimestamps(fileStamp map[string]time.Time) (conChanged, aggChanged bool) {
 	// read the timestamps from the log rotation state file
 	log.Printf("LOG ROTATE: Reading log rotation timestamps")
 
@@ -296,9 +329,9 @@ func readLogRotTimestamps(fileStamp map[string]time.Time) (conChanged, aggChange
 	aggChanged = false
 
 	// open the state file
-	sf, err := os.Open(logRotStateFile)
+	sf, err := os.Open(lm.logRotStateFile)
 	if err != nil {
-		log.Printf("Unable to open log rotation state file %s: %s", logRotStateFile, err)
+		log.Printf("Unable to open log rotation state file %s: %s", lm.logRotStateFile, err)
 		return false, false
 	}
 	defer sf.Close()
@@ -315,7 +348,7 @@ func readLogRotTimestamps(fileStamp map[string]time.Time) (conChanged, aggChange
 		}
 
 		// parse this file timestamp
-		if fileName, fd, isCon, isAgg := parseTimestamp(line); isCon || isAgg {
+		if fileName, fd, isCon, isAgg := lm.parseTimestamp(line); isCon || isAgg {
 			// see if this file already is in the map
 			if _, ok := fileStamp[fileName]; ok {
 				// entry present, check for timestamp equality
@@ -346,29 +379,29 @@ func readLogRotTimestamps(fileStamp map[string]time.Time) (conChanged, aggChange
 }
 
 // Function to periodically do the log rotation
-func doLogRotate() {
+func (lm LogRotateManager) doLogRotate() {
 	// put an initial delay into starting log rotation to allow things to come up
 	time.Sleep(120 * time.Second)
 
 	// turn the check frequency into a valid time duration
 	sleepSecs := time.Duration(300) * time.Second
-	if logRotCheckFreqSec > 0 {
+	if lm.logRotCheckFreqSec > 0 {
 		// make sure we have a valid number before converting
-		sleepSecs = time.Duration(logRotCheckFreqSec) * time.Second
+		sleepSecs = time.Duration(lm.logRotCheckFreqSec) * time.Second
 	} else {
-		log.Printf("Log rotation freqency invalid, defaulting to 5 min. Input value:%d", logRotCheckFreqSec)
+		log.Printf("Log rotation freqency invalid, defaulting to 5 min. Input value:%d", lm.logRotCheckFreqSec)
 	}
 
 	// keep track of last rotate time for all log files - need to kick
 	// conmand if any log files changed.
 	fileStamp := make(map[string]time.Time)
-	readLogRotTimestamps(fileStamp)
+	lm.readLogRotTimestamps(fileStamp)
 
 	// loop forever waiting the correct period between checking for log rotations
 	for {
 		// if log rotation is enabled, do the check
-		if logRotEnabled {
-			rotateLogsOnce(fileStamp)
+		if lm.logRotEnabled {
+			lm.rotateLogsOnce(fileStamp)
 		}
 
 		// sleep until the next check time
@@ -376,12 +409,12 @@ func doLogRotate() {
 	}
 }
 
-func rotateLogsOnce(fileStamp map[string]time.Time) {
+func (lm LogRotateManager) rotateLogsOnce(fileStamp map[string]time.Time) {
 	// kick off the log rotation command
 	// NOTE: using explicit state file to insure it is on pvc storage and
 	//  to be able to parse it after completion.
 	log.Print("LOG ROTATE: Starting logrotate")
-	cmd := exec.Command("logrotate", "-s", logRotStateFile, logRotConfFile)
+	cmd := exec.Command("logrotate", "-s", lm.logRotStateFile, lm.logRotConfFile)
 	exitCode := -1
 	if err := cmd.Run(); err != nil {
 		var ee *exec.ExitError
@@ -395,19 +428,19 @@ func rotateLogsOnce(fileStamp map[string]time.Time) {
 	log.Printf("LOG ROTATE: Log Rotation completed with exit code: %d", exitCode)
 
 	// see if files were actually rotated - kick conmand if needed
-	if conChanged, aggChanged := readLogRotTimestamps(fileStamp); conChanged || aggChanged {
+	if conChanged, aggChanged := lm.readLogRotTimestamps(fileStamp); conChanged || aggChanged {
 		// Give a slight pause to let the system catch up
 		time.Sleep(5 * time.Second)
 
 		// conman must be signaled to reconnect to moved log files
 		if conChanged {
 			log.Print("LOG ROTATE: Log files rotated, signaling conmand")
-			signalConmanHUP()
+			lm.conmanService.signalConmanHUP()
 		}
 
 		// the aggregation log must be restarted for moved file
 		if aggChanged {
-			respinAggLog()
+			lm.logAggService.respinAggLog()
 		}
 	} else {
 		log.Print("LOG ROTATE: No log files changed with logrotate")

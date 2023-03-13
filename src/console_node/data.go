@@ -34,19 +34,30 @@ import (
 	"time"
 )
 
-// Variable to hold address of console-data service
-var dataAddrBase string = "http://cray-console-data/v1"
+type DataService interface {
+	acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo
+	releaseNodes(nodes []nodeConsoleInfo)
+	DataAddrBase() string
+}
 
-// Time to wait for sending the heartbeat to console-data
-var heartbeatIntervalSecs int = 30
+// Implements DataService
+type DataManager struct {
+	dataAddrBase string
+}
 
-// available for rest of system to query when last heartbeat was sent
-var lastHeartbeatTime string = "None"
+// Inject dependencies
+func NewDataService() *DataManager {
+	return &DataManager{
+		dataAddrBase: "http://cray-console-data/v1",
+	}
+}
 
-var debugCtr int = 0
+func (dm DataManager) DataAddrBase() string {
+	return dm.dataAddrBase
+}
 
 // Function to acquire new consoles to monitor
-func acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
+func (dm DataManager) acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
 	// NOTE: in doGetNewNodes thread
 	log.Printf("Acquiring new nodes mtn: %d, rvr: %d", numMtn, numRvr)
 
@@ -62,7 +73,7 @@ func acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
 	}
 
 	// make the call to console-data
-	url := fmt.Sprintf("%s/consolepod/%s/acquire", dataAddrBase, podID)
+	url := fmt.Sprintf("%s/consolepod/%s/acquire", dm.dataAddrBase, podID)
 	rb, _, err := postURL(url, data, nil)
 	if err != nil {
 		log.Printf("Error in console-data acquire: %s", err)
@@ -81,75 +92,8 @@ func acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
 	return newNodes
 }
 
-// Function to do the heartbeat
-func sendSingleHeartbeat() {
-	// lock the list of current nodes while updating heartbeat information
-	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
-
-	// create the url for the heartbeat of this pod
-	url := fmt.Sprintf("%s/consolepod/%s/heartbeat", dataAddrBase, podID)
-
-	// gather the current nodes and assemble into json data
-	currNodes := make([]nodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
-	for _, ni := range currentRvrNodes {
-		currNodes = append(currNodes, *ni)
-	}
-	for _, ni := range currentMtnNodes {
-		currNodes = append(currNodes, *ni)
-	}
-	data, err := json.Marshal(currNodes)
-	if err != nil {
-		log.Printf("Error marshalling data for add nodes:%s", err)
-		return
-	}
-
-	// log last heartbeat time
-	t := time.Now()
-	lastHeartbeatTime = t.Format(time.RFC3339)
-
-	// make the http call
-	log.Printf("Pod: %s sending heartbeat", podID)
-	rb, _, err := postURL(url, data, nil)
-	if err != nil {
-		log.Printf("Error sending heartbeat: %s", err)
-	}
-
-	// process the nodes no longer controlled by this pod
-	if rb != nil {
-		// should be an array of nodeConsoleInfo structs
-		var droppedNodes []nodeConsoleInfo
-		err := json.Unmarshal(rb, &droppedNodes)
-		if err != nil {
-			log.Printf("Error unmarshalling heartbeat return data: %s", err)
-		} else if len(droppedNodes) > 0 {
-			log.Printf("Heartbeat: There are %d dropped nodes", len(droppedNodes))
-
-			// release the nodes
-			for _, ni := range droppedNodes {
-				releaseNode(ni.NodeName)
-			}
-
-			// signal conman to restart/reconfigure
-			signalConmanTERM()
-		}
-	}
-}
-
-// Function to send heartbeat to console-data
-func doHeartbeat() {
-	// NOTE: this is intended to be constantly running in its own thread
-	for {
-		// do a single heartbeat event
-		sendSingleHeartbeat()
-
-		// wait for the next interval
-		time.Sleep(time.Duration(heartbeatIntervalSecs) * time.Second)
-	}
-}
-
 // Function to release nodes from this pod
-func releaseNodes(nodes []nodeConsoleInfo) {
+func (dm DataManager) releaseNodes(nodes []nodeConsoleInfo) {
 	// NOTE: the current console-data api takes nodeConsoleInfo structs, but really only
 	//  needs the xname (as a key).
 
@@ -158,7 +102,7 @@ func releaseNodes(nodes []nodeConsoleInfo) {
 	// NOTE: also called from releaseAllNodes when shutting down
 
 	// create the url for the heartbeat of this pod
-	url := fmt.Sprintf("%s/consolepod/%s/release", dataAddrBase, podID)
+	url := fmt.Sprintf("%s/consolepod/%s/release", dm.dataAddrBase, podID)
 
 	// gather the current nodes and assemble into json data
 	data, err := json.Marshal(nodes)
@@ -174,6 +118,8 @@ func releaseNodes(nodes []nodeConsoleInfo) {
 		log.Printf("Error releasing nodes: %s", err)
 	}
 }
+
+var debugCtr int = 0
 
 //========================================
 // Debugging functions below - not used in production path

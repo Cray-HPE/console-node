@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2022 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2023 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -33,9 +33,64 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
+
+type NodeService interface {
+	TargetRvrNodes() int
+	TargetMtnNodes() int
+	doGetNewNodes()
+	watchForNodes()
+	rebalanceNodes(currentMtnNodes map[string]*nodeConsoleInfo, currentRvrNodes map[string]*nodeConsoleInfo) bool
+	releaseNode(xname string) bool
+}
+
+// Implements NodeService
+type NodeManager struct {
+	currentNodeService CurrentNodeService
+	dataService        DataService
+	logRotateService   LogRotateService
+	logAggService      LogAggService
+	conmanService      ConmanService
+	targetNodeFile     string
+	targetRvrNodes     int
+	targetMtnNodes     int
+	maxAcquireRvr      int
+	maxAcquireMtn      int
+	newNodeLookupSec   int
+}
+
+// Inject dependencies
+func NewNodeService(cns CurrentNodeService,
+	ds DataService,
+	lrs LogRotateService,
+	las LogAggService,
+	cs ConmanService) *NodeManager {
+
+	var newNodeLookupSec int = 30
+	var maxAcquireMtn int = 500
+	var maxAcquireRvr int = 200
+	readSingleEnvVarInt("NODE_UPDATE_FREQ_SEC", &newNodeLookupSec, 10, 600)
+	readSingleEnvVarInt("MAX_ACQUIRE_PER_UPDATE_MTN", &maxAcquireMtn, 5, 2000)
+	readSingleEnvVarInt("MAX_ACQUIRE_PER_UPDATE_RVR", &maxAcquireRvr, 5, 4000)
+	// File to hold target number of node information - it will reside on
+	// a shared file system so console-node pods can read what is set here
+	const targetNodeFile string = "/var/log/console/TargetNodes.txt"
+
+	return &NodeManager{
+		currentNodeService: cns,
+		dataService:        ds,
+		logRotateService:   lrs,
+		logAggService:      las,
+		conmanService:      cs,
+		newNodeLookupSec:   newNodeLookupSec,
+		targetRvrNodes:     -1,
+		targetMtnNodes:     -1,
+		maxAcquireRvr:      maxAcquireRvr,
+		maxAcquireMtn:      maxAcquireMtn,
+		targetNodeFile:     targetNodeFile,
+	}
+}
 
 // Struct to hold all node level information needed to form a console connection
 type nodeConsoleInfo struct {
@@ -63,28 +118,16 @@ func (nc nodeConsoleInfo) String() string {
 		nc.NodeName, nc.BmcName, nc.BmcFqdn, nc.Class, nc.NID, nc.Role)
 }
 
-// Globals for managing nodes being watched
-var currNodesMutex = &sync.Mutex{}
-var currentMtnNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
-var currentRvrNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
+func (nm *NodeManager) TargetRvrNodes() int {
+	return nm.targetRvrNodes
+}
 
-// Number of nodes this pod should be watching
-var targetRvrNodes int = -1
-var targetMtnNodes int = -1
-
-// Number of nodes to get per acquisition query
-var maxAcquireRvr int = 500
-var maxAcquireMtn int = 200
-
-// Pause between each lookup for new node information
-var newNodeLookupSec int = 30
-
-// File to hold target number of node information - it will reside on
-// a shared file system so console-node pods can read what is set here
-const targetNodeFile string = "/var/log/console/TargetNodes.txt"
+func (nm *NodeManager) TargetMtnNodes() int {
+	return nm.targetMtnNodes
+}
 
 // small helper function to insure correct number of nodes asked for
-func pinNumNodes(numAsk, numMax int) int {
+func (*NodeManager) pinNumNodes(numAsk, numMax int) int {
 	// insure the input number ends in range [0,numMax]
 	if numAsk < 0 {
 		// already have too many
@@ -96,39 +139,39 @@ func pinNumNodes(numAsk, numMax int) int {
 	return numAsk
 }
 
-func doGetNewNodes() {
+func (nm *NodeManager) doGetNewNodes() {
 	// put a lock on the current nodes while looking for new ones
-	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	currentMtnNodes := nm.currentNodeService.GetMtnNodes().CurrentNodes()
+	currentRvrNodes := nm.currentNodeService.GetRvrNodes().CurrentNodes()
 
 	// keep track of if we need to redo the configuration
 	changed := false
 
 	// Update the target number of nodes being monitored
-	updateNodesPerPod()
+	nm.updateNodesPerPod()
 
 	// Check if we need to gather more nodes - don't take more
 	//  if the service is shutting down
-	if !inShutdown && (len(currentRvrNodes) < targetRvrNodes || len(currentMtnNodes) < targetMtnNodes) {
+	if !inShutdown && (len(currentRvrNodes) < nm.targetRvrNodes || len(currentMtnNodes) < nm.targetRvrNodes) {
 		// figure out how many of each to ask for
-		numRvr := pinNumNodes(targetRvrNodes-len(currentRvrNodes), maxAcquireRvr)
-		numMtn := pinNumNodes(targetMtnNodes-len(currentMtnNodes), maxAcquireMtn)
+		numRvr := nm.pinNumNodes(nm.targetRvrNodes-len(currentRvrNodes), nm.maxAcquireRvr)
+		numMtn := nm.pinNumNodes(nm.targetRvrNodes-len(currentMtnNodes), nm.maxAcquireMtn)
 
 		// attempt to acquire more nodes
 		if numRvr > 0 || numMtn > 0 {
 			// NOTE: this should be the ONLY place where the maps of
 			//  current nodes is updated!!!
 			log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
-			newNodes := acquireNewNodes(numMtn, numRvr)
+			newNodes := nm.dataService.acquireNewNodes(numMtn, numRvr)
 			// process the new nodes
 			for i, node := range newNodes {
 				log.Printf("  Processing node: %s", node.String())
 				if node.isRiver() {
-					currentRvrNodes[node.NodeName] = &newNodes[i]
+					nm.currentNodeService.GetRvrNodes().Put(node.NodeName, &newNodes[i])
 					log.Printf("  Adding new river node: %s", node.String())
 					changed = true
 				} else if node.isMountain() {
-					currentMtnNodes[node.NodeName] = &newNodes[i]
+					nm.currentNodeService.GetMtnNodes().Put(node.NodeName, &newNodes[i])
 					log.Printf("  Adding new mtn node: %s", node.String())
 					changed = true
 				}
@@ -138,47 +181,46 @@ func doGetNewNodes() {
 		}
 	} else {
 		log.Printf("Skipping acquire - at capacity. CurRvr:%d, TarRvr:%d, CurMtn:%d, TarMtn:%d",
-			len(currentRvrNodes), targetRvrNodes, len(currentMtnNodes), targetMtnNodes)
+			len(currentRvrNodes), nm.targetRvrNodes, len(currentMtnNodes), nm.targetRvrNodes)
 	}
 
 	// See if we have too many nodes
-	if rebalanceNodes() {
+	if nm.rebalanceNodes(currentMtnNodes, currentRvrNodes) {
 		changed = true
 	}
 
 	// Restart the conman process if needed
 	if changed {
 		// trigger a re-configuration and restart of conman
-		signalConmanTERM()
+		nm.conmanService.signalConmanTERM()
 
 		// rebuild the log rotation configuration file
-		updateLogRotateConf()
+		nm.logRotateService.updateLogRotateConf()
 	}
 
 }
 
 // Primary loop to watch for updates
-func watchForNodes() {
+func (nm *NodeManager) watchForNodes() {
 	// create a loop to execute the conmand command
 	for {
 		// look for new nodes once
-		doGetNewNodes()
+		nm.doGetNewNodes()
 
 		// Wait for the correct polling interval
-		time.Sleep(time.Duration(newNodeLookupSec) * time.Second)
+		time.Sleep(time.Duration(nm.newNodeLookupSec) * time.Second)
 	}
 }
 
 // If we have too many nodes, release some
-func rebalanceNodes() bool {
+func (nm *NodeManager) rebalanceNodes(currentMtnNodes map[string]*nodeConsoleInfo, currentRvrNodes map[string]*nodeConsoleInfo) bool {
 	// NOTE: this function just modifies currentNodes lists and stops
 	//  tailing operation.  The configuration files will be triggered to be
 	//  regenerated outside of this operation.
 
 	// NOTE: in doGetNewNodes thread
-
 	// see if we need to release any nodes
-	if len(currentRvrNodes) <= targetRvrNodes && len(currentMtnNodes) <= targetMtnNodes {
+	if len(currentRvrNodes) <= nm.targetRvrNodes && len(currentMtnNodes) <= nm.targetRvrNodes {
 		log.Printf("Current number of nodes within target range - no rebalance needed")
 		return false
 	}
@@ -189,13 +231,13 @@ func rebalanceNodes() bool {
 	// release river nodes until match target number
 	// NOTE: map iteration is random
 	for key, ni := range currentRvrNodes {
-		if len(currentRvrNodes) > targetRvrNodes {
+		if len(currentRvrNodes) > nm.targetRvrNodes {
 			// remove another one
 			rn = append(rn, *ni)
 			delete(currentRvrNodes, key)
 
 			// stop tailing this file
-			stopTailing(key)
+			nm.logAggService.stopTailing(key)
 		} else {
 			// done so break
 			break
@@ -205,13 +247,13 @@ func rebalanceNodes() bool {
 	// release mtn nodes until match target number
 	// NOTE: map iteration is random
 	for key, ni := range currentMtnNodes {
-		if len(currentMtnNodes) > targetMtnNodes {
+		if len(currentMtnNodes) > nm.targetMtnNodes {
 			// remove another one
 			rn = append(rn, *ni)
 			delete(currentMtnNodes, key)
 
 			// stop tailing this file
-			stopTailing(key)
+			nm.logAggService.stopTailing(key)
 		} else {
 			// done so break
 			break
@@ -220,7 +262,7 @@ func rebalanceNodes() bool {
 
 	if len(rn) > 0 {
 		// notify console-data that we are no longer tracking these nodes
-		releaseNodes(rn)
+		nm.dataService.releaseNodes(rn)
 
 		// signify that we have removed nodes and something has changed
 		return true
@@ -231,11 +273,13 @@ func rebalanceNodes() bool {
 }
 
 // Function to release the node from being monitored
-func releaseNode(xname string) bool {
+func (nm *NodeManager) releaseNode(xname string) bool {
 	// NOTE: called during heartbeat thread
 
 	// This will remove it from the list of current nodes and stop tailing the
 	// log file.
+	currentRvrNodes := nm.currentNodeService.GetRvrNodes().CurrentNodes()
+	currentMtnNodes := nm.currentNodeService.GetMtnNodes().CurrentNodes()
 	found := false
 	if _, ok := currentRvrNodes[xname]; ok {
 		delete(currentRvrNodes, xname)
@@ -246,13 +290,13 @@ func releaseNode(xname string) bool {
 	}
 
 	// remove the tail process for this file
-	stopTailing(xname)
+	nm.logAggService.stopTailing(xname)
 
 	return found
 }
 
 // Update the number of target consoles per node pod
-func updateNodesPerPod() {
+func (nm *NodeManager) updateNodesPerPod() {
 	// NOTE: for the time being we will just put this information
 	//  into a simple text file on a pvc shared with console-operator
 	//  and console-node pods.  The console-operator will write changes
@@ -265,9 +309,9 @@ func updateNodesPerPod() {
 
 	log.Printf("Updating nodes per pod")
 	// open the state file
-	sf, err := os.Open(targetNodeFile)
+	sf, err := os.Open(nm.targetNodeFile)
 	if err != nil {
-		log.Printf("Unable to open target node file %s: %s", targetNodeFile, err)
+		log.Printf("Unable to open target node file %s: %s", nm.targetNodeFile, err)
 		return
 	}
 	defer sf.Close()
@@ -310,10 +354,10 @@ func updateNodesPerPod() {
 
 	// set the new values with a little sanity checking
 	if newRvr >= 0 {
-		targetRvrNodes = newRvr
+		nm.targetRvrNodes = newRvr
 	}
 	if newMtn >= 0 {
-		targetMtnNodes = newMtn
+		nm.targetMtnNodes = newMtn
 	}
 	log.Printf("  New target nodes - mtn: %d, rvr: %d", newMtn, newRvr)
 }

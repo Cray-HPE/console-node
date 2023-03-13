@@ -32,6 +32,26 @@ import (
 	"net/http"
 )
 
+type HealthService interface {
+	doHealth(w http.ResponseWriter, r *http.Request)
+	doLiveness(w http.ResponseWriter, r *http.Request)
+	doReadiness(w http.ResponseWriter, r *http.Request)
+}
+
+type HealthManager struct {
+	heartbeatService   HeartbeatService
+	nodeService        NodeService
+	currentNodeService CurrentNodeService
+}
+
+func NewHealthService(hbs HeartbeatService, ns NodeService, cns CurrentNodeService) *HealthManager {
+	return &HealthManager{
+		heartbeatService:   hbs,
+		nodeService:        ns,
+		currentNodeService: cns,
+	}
+}
+
 // HealthResponse - used to report service health stats
 type HealthResponse struct {
 	NumMtnConnected string `json:"num_mtn"`
@@ -48,7 +68,7 @@ type ErrResponse struct {
 }
 
 // Information on the status
-func doHealth(w http.ResponseWriter, r *http.Request) {
+func (hm HealthManager) doHealth(w http.ResponseWriter, r *http.Request) {
 	// NOTE: this is provided as a quick check of the internal status for
 	//  administrators to aid in determining the health of this service.
 
@@ -69,11 +89,11 @@ func doHealth(w http.ResponseWriter, r *http.Request) {
 	var stats HealthResponse
 
 	// NOTE: just dummy it out now
-	stats.NumMtnConnected = fmt.Sprintf("%d", len(currentMtnNodes))
-	stats.NumRvrConnected = fmt.Sprintf("%d", len(currentRvrNodes))
-	stats.TargetNumMtn = fmt.Sprintf("%d", targetMtnNodes)
-	stats.TargetNumRvr = fmt.Sprintf("%d", targetRvrNodes)
-	stats.LastHeartbeat = lastHeartbeatTime
+	stats.NumMtnConnected = fmt.Sprintf("%d", len(hm.currentNodeService.GetMtnNodes().CurrentNodes()))
+	stats.NumRvrConnected = fmt.Sprintf("%d", len(hm.currentNodeService.GetRvrNodes().CurrentNodes()))
+	stats.TargetNumMtn = fmt.Sprintf("%d", hm.nodeService.TargetMtnNodes())
+	stats.TargetNumRvr = fmt.Sprintf("%d", hm.nodeService.TargetRvrNodes())
+	stats.LastHeartbeat = hm.heartbeatService.LastHeartbeatTime()
 
 	// write the output
 	w.WriteHeader(http.StatusOK)
@@ -83,7 +103,7 @@ func doHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 // Basic liveness probe
-func doLiveness(w http.ResponseWriter, r *http.Request) {
+func (HealthManager) doLiveness(w http.ResponseWriter, r *http.Request) {
 	// NOTE: this is coded in accordance with kubernetes best practices
 	//  for liveness/readiness checks.  This function should only be
 	//  used to indicate the server is still alive and processing requests.
@@ -102,7 +122,7 @@ func doLiveness(w http.ResponseWriter, r *http.Request) {
 }
 
 // Basic readiness probe
-func doReadiness(w http.ResponseWriter, r *http.Request) {
+func (HealthManager) doReadiness(w http.ResponseWriter, r *http.Request) {
 	// NOTE: this is coded in accordance with kubernetes best practices
 	//  for liveness/readiness checks.  This function should only be
 	//  used to indicate the server is still alive and processing requests.

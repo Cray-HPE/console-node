@@ -82,9 +82,6 @@ func setPodName() {
 	} else {
 		log.Printf("Podname empty - unable to find pod id")
 	}
-
-	// set the aggregation log name based on the pod name
-	conAggLogFile = conAggLogFileBase + podName + ".log"
 }
 
 // Main loop for the application
@@ -101,10 +98,6 @@ func main() {
 	if v := os.Getenv("DEBUG"); v == "TRUE" {
 		debugOnly = true
 	}
-	readSingleEnvVarInt("HEARTBEAT_SEND_FREQ_SEC", &heartbeatIntervalSecs, 5, 300)
-	readSingleEnvVarInt("NODE_UPDATE_FREQ_SEC", &newNodeLookupSec, 10, 600)
-	readSingleEnvVarInt("MAX_ACQUIRE_PER_UPDATE_MTN", &maxAcquireMtn, 5, 2000)
-	readSingleEnvVarInt("MAX_ACQUIRE_PER_UPDATE_RVR", &maxAcquireRvr, 5, 4000)
 
 	// log the fact if we are in debug mode
 	if debugOnly {
@@ -120,11 +113,22 @@ func main() {
 	log.Printf("Setting pod information...")
 	setPodName()
 
+	// Construct dependency injection
+	currentNodeService := NewCurrentNodesService()
+	logAggService := NewLogAggService()
+	dataService := NewDataService()
+	credService := NewCredService(currentNodeService)
+	conmanService := NewConmanService(logAggService, currentNodeService, credService)
+	logRotateService := NewLogRotateService(currentNodeService, logAggService, conmanService)
+	nodeService := NewNodeService(currentNodeService, dataService, logRotateService, logAggService, conmanService)
+	heartbeatService := NewHeartbeatService(nodeService, dataService, currentNodeService, conmanService)
+	healthService := NewHealthService(heartbeatService, nodeService, currentNodeService)
+
 	// start the aggregation log
-	respinAggLog()
+	logAggService.respinAggLog()
 
 	// Initialize and start log rotation
-	logRotate()
+	logRotateService.rotate()
 
 	// Set up the zombie killer
 	log.Printf("Starting zombie killer...")
@@ -132,20 +136,20 @@ func main() {
 
 	// spin a thread that watches for changes in console configuration
 	log.Printf("Starting hardware watch loop...")
-	go watchForNodes()
+	go nodeService.watchForNodes()
 
 	// start up the heartbeat in a separate thread
-	go doHeartbeat()
+	go heartbeatService.doHeartbeat()
 
 	// start up the thread that runs conman
-	go runConman()
+	go conmanService.runConman()
 
 	// start up the thread to monitor for configuration changes
 	go doMonitor()
 
 	// set up mechanism to test for killing tail functions
 	if debugOnly {
-		go killTails()
+		go logAggService.killTails()
 	}
 
 	// set up a channel to wait for the os to tell us to stop
@@ -159,9 +163,9 @@ func main() {
 	// NOTE: just doing it here for now, when it gets more complex break this
 	//  into a separate function
 	log.Printf("Setting http handlers...")
-	http.HandleFunc("/console-node/liveness", doLiveness)
-	http.HandleFunc("/console-node/readiness", doReadiness)
-	http.HandleFunc("/console-node/health", doHealth)
+	http.HandleFunc("/console-node/liveness", healthService.doLiveness)
+	http.HandleFunc("/console-node/readiness", healthService.doReadiness)
+	http.HandleFunc("/console-node/health", healthService.doHealth)
 
 	// spin the server in a separate thread so main can wait on an os
 	// signal to cleanly shut down
@@ -187,7 +191,7 @@ func main() {
 	inShutdown = true
 
 	// release all the current nodes immediately so they can be re-assigned
-	releaseAllNodes()
+	releaseAllNodes(dataService, nodeService, currentNodeService, logAggService)
 
 	// stop the server from taking requests
 	// NOTE: this waits for active connections to finish
@@ -198,10 +202,10 @@ func main() {
 }
 
 // make sure that all nodes are released immediately
-func releaseAllNodes() {
+func releaseAllNodes(ds DataService, ns NodeService, cns CurrentNodeService, las LogAggService) {
 	// make sure nobody else is messing with the current nodes
-	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	currentRvrNodes := cns.GetRvrNodes().CurrentNodes()
+	currentMtnNodes := cns.GetMtnNodes().CurrentNodes()
 
 	log.Printf("Releasing all nodes back for re-assignment")
 	// gather all current nodes
@@ -211,20 +215,20 @@ func releaseAllNodes() {
 	for key, ni := range currentRvrNodes {
 		// record and stop tailing
 		rn = append(rn, *ni)
-		stopTailing(key)
+		las.stopTailing(key)
 	}
-	currentRvrNodes = make(map[string]*nodeConsoleInfo)
+	cns.GetRvrNodes().ResetCurrentNodes()
 
 	// release mtn nodes
 	for key, ni := range currentMtnNodes {
 		// record and stop tailing
 		rn = append(rn, *ni)
-		stopTailing(key)
+		las.stopTailing(key)
 	}
-	currentMtnNodes = make(map[string]*nodeConsoleInfo)
+	cns.GetMtnNodes().ResetCurrentNodes()
 
 	// release the nodes from console-data
-	releaseNodes(rn)
+	ds.releaseNodes(rn)
 }
 
 // Utility function to ensure that a directory exists
