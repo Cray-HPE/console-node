@@ -45,7 +45,6 @@ type LogRotateService interface {
 }
 
 type LogRotateManager struct {
-	currentNodeService CurrentNodeService
 	logAggService      LogAggService
 	conmanService      ConmanService
 	logRotDir          string
@@ -64,7 +63,7 @@ type LogRotateManager struct {
 // since they need to be specific for this pod, but do not need to
 // be persisted through pod restarts.  They do need to be in locations
 // that are writable by 'nobody' user
-func NewLogRotateService(cns CurrentNodeService, las LogAggService, cs ConmanService) *LogRotateManager {
+func NewLogRotateService(las LogAggService, cs ConmanService) *LogRotateManager {
 	// NOTE: eventually make these available to change through the REST api
 	var logRotEnabled bool = true
 	var logRotCheckFreqSec = 600
@@ -74,7 +73,6 @@ func NewLogRotateService(cns CurrentNodeService, las LogAggService, cs ConmanSer
 	var logRotAggNumRotate int = 1       // number of aggregation backup copies to keep
 
 	return &LogRotateManager{
-		currentNodeService: cns,
 		logAggService:      las,
 		conmanService:      cs,
 		logRotDir:          "/var/log/conman.old",
@@ -194,8 +192,8 @@ func (lm LogRotateManager) updateLogRotateConf() {
 	*/
 
 	// put a lock on the current nodes while writing the file
-	currentMtnNodes := lm.currentNodeService.GetMtnNodes().CurrentNodes()
-	currentRvrNodes := lm.currentNodeService.GetRvrNodes().CurrentNodes()
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
 
 	// Open the file for writing
 	log.Printf("LOG ROTATE: Opening conman log rotation configuration file for output: %s", lm.logRotConfFile)

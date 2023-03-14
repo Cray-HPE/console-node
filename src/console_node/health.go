@@ -39,16 +39,14 @@ type HealthService interface {
 }
 
 type HealthManager struct {
-	heartbeatService   HeartbeatService
-	nodeService        NodeService
-	currentNodeService CurrentNodeService
+	heartbeatService HeartbeatService
+	nodeService      NodeService
 }
 
-func NewHealthService(hbs HeartbeatService, ns NodeService, cns CurrentNodeService) *HealthManager {
+func NewHealthService(hbs HeartbeatService, ns NodeService) *HealthManager {
 	return &HealthManager{
-		heartbeatService:   hbs,
-		nodeService:        ns,
-		currentNodeService: cns,
+		heartbeatService: hbs,
+		nodeService:      ns,
 	}
 }
 
@@ -89,8 +87,8 @@ func (hm HealthManager) doHealth(w http.ResponseWriter, r *http.Request) {
 	var stats HealthResponse
 
 	// NOTE: just dummy it out now
-	stats.NumMtnConnected = fmt.Sprintf("%d", len(hm.currentNodeService.GetMtnNodes().CurrentNodes()))
-	stats.NumRvrConnected = fmt.Sprintf("%d", len(hm.currentNodeService.GetRvrNodes().CurrentNodes()))
+	stats.NumMtnConnected = fmt.Sprintf("%d", len(currentMtnNodes))
+	stats.NumRvrConnected = fmt.Sprintf("%d", len(currentRvrNodes))
 	stats.TargetNumMtn = fmt.Sprintf("%d", hm.nodeService.TargetMtnNodes())
 	stats.TargetNumRvr = fmt.Sprintf("%d", hm.nodeService.TargetRvrNodes())
 	stats.LastHeartbeat = hm.heartbeatService.LastHeartbeatTime()

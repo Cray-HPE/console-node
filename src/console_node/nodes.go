@@ -33,8 +33,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+// Globals for managing nodes being watched
+var currNodesMutex = &sync.Mutex{}
+var currentMtnNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
+var currentRvrNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
 
 type NodeService interface {
 	TargetRvrNodes() int
@@ -47,21 +53,20 @@ type NodeService interface {
 
 // Implements NodeService
 type NodeManager struct {
-	currentNodeService CurrentNodeService
-	dataService        DataService
-	logRotateService   LogRotateService
-	logAggService      LogAggService
-	conmanService      ConmanService
-	targetNodeFile     string
-	targetRvrNodes     int
-	targetMtnNodes     int
-	maxAcquireRvr      int
-	maxAcquireMtn      int
-	newNodeLookupSec   int
+	dataService      DataService
+	logRotateService LogRotateService
+	logAggService    LogAggService
+	conmanService    ConmanService
+	targetNodeFile   string
+	targetRvrNodes   int
+	targetMtnNodes   int
+	maxAcquireRvr    int
+	maxAcquireMtn    int
+	newNodeLookupSec int
 }
 
 // Inject dependencies
-func NewNodeService(cns CurrentNodeService,
+func NewNodeService(
 	ds DataService,
 	lrs LogRotateService,
 	las LogAggService,
@@ -78,17 +83,16 @@ func NewNodeService(cns CurrentNodeService,
 	const targetNodeFile string = "/var/log/console/TargetNodes.txt"
 
 	return &NodeManager{
-		currentNodeService: cns,
-		dataService:        ds,
-		logRotateService:   lrs,
-		logAggService:      las,
-		conmanService:      cs,
-		newNodeLookupSec:   newNodeLookupSec,
-		targetRvrNodes:     -1,
-		targetMtnNodes:     -1,
-		maxAcquireRvr:      maxAcquireRvr,
-		maxAcquireMtn:      maxAcquireMtn,
-		targetNodeFile:     targetNodeFile,
+		dataService:      ds,
+		logRotateService: lrs,
+		logAggService:    las,
+		conmanService:    cs,
+		newNodeLookupSec: newNodeLookupSec,
+		targetRvrNodes:   -1,
+		targetMtnNodes:   -1,
+		maxAcquireRvr:    maxAcquireRvr,
+		maxAcquireMtn:    maxAcquireMtn,
+		targetNodeFile:   targetNodeFile,
 	}
 }
 
@@ -141,8 +145,8 @@ func (*NodeManager) pinNumNodes(numAsk, numMax int) int {
 
 func (nm *NodeManager) doGetNewNodes() {
 	// put a lock on the current nodes while looking for new ones
-	currentMtnNodes := nm.currentNodeService.GetMtnNodes().CurrentNodes()
-	currentRvrNodes := nm.currentNodeService.GetRvrNodes().CurrentNodes()
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
 
 	// keep track of if we need to redo the configuration
 	changed := false
@@ -167,11 +171,11 @@ func (nm *NodeManager) doGetNewNodes() {
 			for i, node := range newNodes {
 				log.Printf("  Processing node: %s", node.String())
 				if node.isRiver() {
-					nm.currentNodeService.GetRvrNodes().Put(node.NodeName, &newNodes[i])
+					currentRvrNodes[node.NodeName] = &newNodes[i]
 					log.Printf("  Adding new river node: %s", node.String())
 					changed = true
 				} else if node.isMountain() {
-					nm.currentNodeService.GetMtnNodes().Put(node.NodeName, &newNodes[i])
+					currentMtnNodes[node.NodeName] = &newNodes[i]
 					log.Printf("  Adding new mtn node: %s", node.String())
 					changed = true
 				}
@@ -278,8 +282,6 @@ func (nm *NodeManager) releaseNode(xname string) bool {
 
 	// This will remove it from the list of current nodes and stop tailing the
 	// log file.
-	currentRvrNodes := nm.currentNodeService.GetRvrNodes().CurrentNodes()
-	currentMtnNodes := nm.currentNodeService.GetMtnNodes().CurrentNodes()
 	found := false
 	if _, ok := currentRvrNodes[xname]; ok {
 		delete(currentRvrNodes, xname)

@@ -114,15 +114,14 @@ func main() {
 	setPodName()
 
 	// Construct dependency injection
-	currentNodeService := NewCurrentNodesService()
 	logAggService := NewLogAggService()
 	dataService := NewDataService()
-	credService := NewCredService(currentNodeService)
-	conmanService := NewConmanService(logAggService, currentNodeService, credService)
-	logRotateService := NewLogRotateService(currentNodeService, logAggService, conmanService)
-	nodeService := NewNodeService(currentNodeService, dataService, logRotateService, logAggService, conmanService)
-	heartbeatService := NewHeartbeatService(nodeService, dataService, currentNodeService, conmanService)
-	healthService := NewHealthService(heartbeatService, nodeService, currentNodeService)
+	credService := NewCredService()
+	conmanService := NewConmanService(logAggService, credService)
+	logRotateService := NewLogRotateService(logAggService, conmanService)
+	nodeService := NewNodeService(dataService, logRotateService, logAggService, conmanService)
+	heartbeatService := NewHeartbeatService(nodeService, dataService, conmanService)
+	healthService := NewHealthService(heartbeatService, nodeService)
 
 	// start the aggregation log
 	logAggService.respinAggLog()
@@ -191,7 +190,7 @@ func main() {
 	inShutdown = true
 
 	// release all the current nodes immediately so they can be re-assigned
-	releaseAllNodes(dataService, nodeService, currentNodeService, logAggService)
+	releaseAllNodes(dataService, nodeService, logAggService)
 
 	// stop the server from taking requests
 	// NOTE: this waits for active connections to finish
@@ -202,10 +201,10 @@ func main() {
 }
 
 // make sure that all nodes are released immediately
-func releaseAllNodes(ds DataService, ns NodeService, cns CurrentNodeService, las LogAggService) {
+func releaseAllNodes(ds DataService, ns NodeService, las LogAggService) {
 	// make sure nobody else is messing with the current nodes
-	currentRvrNodes := cns.GetRvrNodes().CurrentNodes()
-	currentMtnNodes := cns.GetMtnNodes().CurrentNodes()
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
 
 	log.Printf("Releasing all nodes back for re-assignment")
 	// gather all current nodes
@@ -217,7 +216,7 @@ func releaseAllNodes(ds DataService, ns NodeService, cns CurrentNodeService, las
 		rn = append(rn, *ni)
 		las.stopTailing(key)
 	}
-	cns.GetRvrNodes().ResetCurrentNodes()
+	currentRvrNodes = make(map[string]*nodeConsoleInfo)
 
 	// release mtn nodes
 	for key, ni := range currentMtnNodes {
@@ -225,7 +224,7 @@ func releaseAllNodes(ds DataService, ns NodeService, cns CurrentNodeService, las
 		rn = append(rn, *ni)
 		las.stopTailing(key)
 	}
-	cns.GetMtnNodes().ResetCurrentNodes()
+	currentMtnNodes = make(map[string]*nodeConsoleInfo)
 
 	// release the nodes from console-data
 	ds.releaseNodes(rn)

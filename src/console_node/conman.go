@@ -41,25 +41,24 @@ type ConmanService interface {
 	runConman()
 	signalConmanHUP()
 	signalConmanTERM()
+	configConman(forceConfigUpdate bool) bool
 }
 
 type ConmanManager struct {
-	logAggService      LogAggService
-	currentNodeService CurrentNodeService
-	credService        CredService
-	command            *exec.Cmd
-	baseConfFile       string
-	confFile           string
+	logAggService LogAggService
+	credService   CredService
+	command       *exec.Cmd
+	baseConfFile  string
+	confFile      string
 }
 
-func NewConmanService(las LogAggService, cns CurrentNodeService, cs CredService) *ConmanManager {
+func NewConmanService(las LogAggService, cs CredService) *ConmanManager {
 	return &ConmanManager{
-		logAggService:      las,
-		currentNodeService: cns,
-		credService:        cs,
-		command:            nil,
-		baseConfFile:       "/app/conman_base.conf",
-		confFile:           "/etc/conman.conf",
+		logAggService: las,
+		credService:   cs,
+		command:       nil,
+		baseConfFile:  "/app/conman_base.conf",
+		confFile:      "/etc/conman.conf",
 	}
 }
 
@@ -68,8 +67,8 @@ func (cm *ConmanManager) configConman(forceConfigUpdate bool) bool {
 	// maintain a lock on the current nodes while doing complete configuration
 	// NOTE: this prevents the lists from being updated in the middle of doing
 	//  the configuration
-	currentMtnNodes := cm.currentNodeService.GetMtnNodes().CurrentNodes()
-	currentRvrNodes := cm.currentNodeService.GetRvrNodes().CurrentNodes()
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
 
 	// Set up or update the conman configuration file.
 	cm.updateConfigFile(forceConfigUpdate)
@@ -149,8 +148,6 @@ func (cm *ConmanManager) signalConmanHUP() {
 		if debugOnly {
 			// NOTE - debugging test code, so don't worry about mutex for current nodes
 			log.Printf("Respinning current log test files...")
-			currentRvrNodes := cm.currentNodeService.GetRvrNodes().CurrentNodes()
-			currentMtnNodes := cm.currentNodeService.GetMtnNodes().CurrentNodes()
 			for nn := range currentRvrNodes {
 				go createTestLogFile(nn, true)
 			}
@@ -301,8 +298,6 @@ func (cm *ConmanManager) updateConfigFile(forceUpdate bool) {
 	}
 
 	// collect the creds for the river endpoints
-	currentRvrNodes := cm.currentNodeService.GetRvrNodes().CurrentNodes()
-	currentMtnNodes := cm.currentNodeService.GetMtnNodes().CurrentNodes()
 	var rvrXNames []string = nil
 	for _, v := range currentRvrNodes {
 		rvrXNames = append(rvrXNames, v.BmcName)

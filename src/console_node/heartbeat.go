@@ -42,10 +42,9 @@ type HeartbeatService interface {
 // Include mutex since running in go routine
 type HeartbeatManager struct {
 	sync.RWMutex
-	nodeService        NodeService
-	dataService        DataService
-	currentNodeService CurrentNodeService
-	conmanService      ConmanService
+	nodeService   NodeService
+	dataService   DataService
+	conmanService ConmanService
 	// Read in via env var
 	heartbeatIntervalSecs int
 	lastHeartbeatTime     string
@@ -54,7 +53,6 @@ type HeartbeatManager struct {
 func NewHeartbeatService(
 	ns NodeService,
 	ds DataService,
-	cns CurrentNodeService,
 	cs ConmanService) *HeartbeatManager {
 
 	var heartbeatIntervalSecs int = 30
@@ -63,7 +61,6 @@ func NewHeartbeatService(
 	return &HeartbeatManager{
 		nodeService:           ns,
 		dataService:           ds,
-		currentNodeService:    cns,
 		conmanService:         cs,
 		heartbeatIntervalSecs: heartbeatIntervalSecs,
 		lastHeartbeatTime:     "None",
@@ -97,8 +94,8 @@ func (hm *HeartbeatManager) doHeartbeat() {
 // Function to do the heartbeat
 func (hm *HeartbeatManager) sendSingleHeartbeat() {
 	// lock the list of current nodes while updating heartbeat information
-	currentMtnNodes := hm.currentNodeService.GetMtnNodes().CurrentNodes()
-	currentRvrNodes := hm.currentNodeService.GetRvrNodes().CurrentNodes()
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
 
 	// create the url for the heartbeat of this pod
 	url := fmt.Sprintf("%s/consolepod/%s/heartbeat", hm.dataService.DataAddrBase(), podID)
