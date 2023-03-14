@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2022 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2023 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -289,6 +289,7 @@ func updateConfigFile(forceUpdate bool) {
 	// NOTE: sometimes if vault hasn't been populated yet there may be no
 	// return values - try again for a while in that case.
 	passwords := getPasswordsWithRetries(rvrXNames, 15, 10)
+	previousPasswords = passwords
 
 	// Add River endpoints to the config file to be accessed by ipmi
 	for _, nodeCi := range currentRvrNodes {
