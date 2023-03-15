@@ -88,7 +88,7 @@ func NewLogRotateService(las LogAggService, cs ConmanService) *LogRotateManager 
 }
 
 // Initialize and start log rotation
-func (lm LogRotateManager) rotate() {
+func (lm *LogRotateManager) rotate() {
 	// Set up the 'backups' directory for logrotation to use
 	ensureDirPresent(lm.logRotDir, 0755)
 
@@ -133,7 +133,7 @@ func (lm LogRotateManager) rotate() {
 }
 
 // All the ways a string could be interpreted as 'true'
-func (LogRotateManager) isTrue(str string) bool {
+func (*LogRotateManager) isTrue(str string) bool {
 	// convert to lower case to remove capitalization as an issue
 	lStr := strings.ToLower(str)
 
@@ -152,7 +152,7 @@ func (LogRotateManager) isTrue(str string) bool {
 }
 
 // Do the initial log rotation file update in a thread safe manner
-func (lm LogRotateManager) doInitialConfFileUpdate() {
+func (lm *LogRotateManager) doInitialConfFileUpdate() {
 	// Make sure the initial log rotation file doesn't miss or overwrite
 	// the initial batch of consoles being monitored.
 	// update the file now that it is safe to do so
@@ -160,7 +160,7 @@ func (lm LogRotateManager) doInitialConfFileUpdate() {
 }
 
 // Create the log rotation configuration file
-func (lm LogRotateManager) updateLogRotateConf() {
+func (lm *LogRotateManager) updateLogRotateConf() {
 	// NOTE: calling function needs to ensure current node maps are
 	//  thread protected
 	// NOTE: in doGetNewNodes thread
@@ -240,7 +240,7 @@ func (lm LogRotateManager) updateLogRotateConf() {
 }
 
 // helper function to write out a single entry in the config file
-func (LogRotateManager) writeConfigEntry(lrf *os.File, fileName string, oldDir string, numRotate int, fileSize string) {
+func (*LogRotateManager) writeConfigEntry(lrf *os.File, fileName string, oldDir string, numRotate int, fileSize string) {
 	fmt.Fprintf(lrf, "%s { \n", fileName)
 	fmt.Fprintln(lrf, "  nocompress")
 	fmt.Fprintln(lrf, "  missingok")
@@ -256,7 +256,7 @@ func (LogRotateManager) writeConfigEntry(lrf *os.File, fileName string, oldDir s
 }
 
 // Parse the timestamp from the input line
-func (lm LogRotateManager) parseTimestamp(line string) (string, time.Time, bool, bool) {
+func (lm *LogRotateManager) parseTimestamp(line string) (string, time.Time, bool, bool) {
 	// NOTE: we are expecting a line in the format of:
 	//  "/var/log/conman/console.xname" YYYY-MM-DD-HH-MM-SS
 	conAggLogFile := lm.logAggService.ConAggLogFile()
@@ -318,7 +318,7 @@ func (lm LogRotateManager) parseTimestamp(line string) (string, time.Time, bool,
 }
 
 // Function to collect most recent log rotation timestamps
-func (lm LogRotateManager) readLogRotTimestamps(fileStamp map[string]time.Time) (conChanged, aggChanged bool) {
+func (lm *LogRotateManager) readLogRotTimestamps(fileStamp map[string]time.Time) (conChanged, aggChanged bool) {
 	// read the timestamps from the log rotation state file
 	log.Printf("LOG ROTATE: Reading log rotation timestamps")
 
@@ -377,7 +377,7 @@ func (lm LogRotateManager) readLogRotTimestamps(fileStamp map[string]time.Time) 
 }
 
 // Function to periodically do the log rotation
-func (lm LogRotateManager) doLogRotate() {
+func (lm *LogRotateManager) doLogRotate() {
 	// put an initial delay into starting log rotation to allow things to come up
 	time.Sleep(120 * time.Second)
 
@@ -407,7 +407,7 @@ func (lm LogRotateManager) doLogRotate() {
 	}
 }
 
-func (lm LogRotateManager) rotateLogsOnce(fileStamp map[string]time.Time) {
+func (lm *LogRotateManager) rotateLogsOnce(fileStamp map[string]time.Time) {
 	// kick off the log rotation command
 	// NOTE: using explicit state file to insure it is on pvc storage and
 	//  to be able to parse it after completion.

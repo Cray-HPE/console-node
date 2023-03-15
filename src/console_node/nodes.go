@@ -47,7 +47,7 @@ type NodeService interface {
 	TargetMtnNodes() int
 	doGetNewNodes()
 	watchForNodes()
-	rebalanceNodes(currentMtnNodes map[string]*nodeConsoleInfo, currentRvrNodes map[string]*nodeConsoleInfo) bool
+	rebalanceNodes() bool
 	releaseNode(xname string) bool
 }
 
@@ -156,10 +156,10 @@ func (nm *NodeManager) doGetNewNodes() {
 
 	// Check if we need to gather more nodes - don't take more
 	//  if the service is shutting down
-	if !inShutdown && (len(currentRvrNodes) < nm.targetRvrNodes || len(currentMtnNodes) < nm.targetRvrNodes) {
+	if !inShutdown && (len(currentRvrNodes) < nm.targetRvrNodes || len(currentMtnNodes) < nm.targetMtnNodes) {
 		// figure out how many of each to ask for
 		numRvr := nm.pinNumNodes(nm.targetRvrNodes-len(currentRvrNodes), nm.maxAcquireRvr)
-		numMtn := nm.pinNumNodes(nm.targetRvrNodes-len(currentMtnNodes), nm.maxAcquireMtn)
+		numMtn := nm.pinNumNodes(nm.targetMtnNodes-len(currentMtnNodes), nm.maxAcquireMtn)
 
 		// attempt to acquire more nodes
 		if numRvr > 0 || numMtn > 0 {
@@ -189,7 +189,7 @@ func (nm *NodeManager) doGetNewNodes() {
 	}
 
 	// See if we have too many nodes
-	if nm.rebalanceNodes(currentMtnNodes, currentRvrNodes) {
+	if nm.rebalanceNodes() {
 		changed = true
 	}
 
@@ -217,14 +217,14 @@ func (nm *NodeManager) watchForNodes() {
 }
 
 // If we have too many nodes, release some
-func (nm *NodeManager) rebalanceNodes(currentMtnNodes map[string]*nodeConsoleInfo, currentRvrNodes map[string]*nodeConsoleInfo) bool {
+func (nm *NodeManager) rebalanceNodes() bool {
 	// NOTE: this function just modifies currentNodes lists and stops
 	//  tailing operation.  The configuration files will be triggered to be
 	//  regenerated outside of this operation.
 
 	// NOTE: in doGetNewNodes thread
 	// see if we need to release any nodes
-	if len(currentRvrNodes) <= nm.targetRvrNodes && len(currentMtnNodes) <= nm.targetRvrNodes {
+	if len(currentRvrNodes) <= nm.targetRvrNodes && len(currentMtnNodes) <= nm.targetMtnNodes {
 		log.Printf("Current number of nodes within target range - no rebalance needed")
 		return false
 	}
