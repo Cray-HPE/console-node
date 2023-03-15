@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - CASMCMS-8252: Updated header of update_versions.conf to reflect new tool options
  - CASMCMS-7169: Conman will be restarted if there is a change to the credentials
  - CASMCMS-7167: Refactor to dependency injection for operator location api
+ - CASMCMS-7167: Implementing location api for pod location data to filter through console data
 
 ### Fixed
  - CASMCMS-8252: Update Chart with correct image and chart version strings during builds.

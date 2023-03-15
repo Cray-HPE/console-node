@@ -35,7 +35,7 @@ import (
 )
 
 type DataService interface {
-	acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo
+	acquireNewNodes(numMtn, numRvr int, podLocation *PodLocationDataResponse) []nodeConsoleInfo
 	releaseNodes(nodes []nodeConsoleInfo)
 	DataAddrBase() string
 }
@@ -57,16 +57,20 @@ func (dm DataManager) DataAddrBase() string {
 }
 
 // Function to acquire new consoles to monitor
-func (dm DataManager) acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
+func (dm DataManager) acquireNewNodes(numMtn, numRvr int, podLocation *PodLocationDataResponse) []nodeConsoleInfo {
 	// NOTE: in doGetNewNodes thread
 	log.Printf("Acquiring new nodes mtn: %d, rvr: %d", numMtn, numRvr)
+	// TODO: remove after testing
+	log.Printf("podLocData xname is %s\n", podLocData.Xname)
 
 	// put together data package
 	type ReqData struct {
-		NumMtn int `json:"nummtn"` // Requested number of Mountain nodes
-		NumRvr int `json:"numrvr"` // Requested number of River nodes
+		NumMtn int    `json:"nummtn"` // Requested number of Mountain nodes
+		NumRvr int    `json:"numrvr"` // Requested number of River nodes
+		Alias  string `json:"alias"`  // Alias of current node pod is running on
+		Xname  string `json:"xname"`  // Xname of current node pod is running on
 	}
-	data, err := json.Marshal(ReqData{NumMtn: numMtn, NumRvr: numRvr})
+	data, err := json.Marshal(ReqData{NumMtn: numMtn, NumRvr: numRvr, Alias: podLocation.Alias, Xname: podLocation.Xname})
 	if err != nil {
 		log.Printf("Error marshalling data:%s", err)
 		return nil

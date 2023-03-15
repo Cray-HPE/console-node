@@ -47,6 +47,10 @@ var debugOnly bool = false
 // Global to identify which pod this is
 var podName string = ""
 var podID string = ""
+var podLocData *PodLocationDataResponse = &PodLocationDataResponse{PodName: "", Xname: "", Alias: ""}
+
+var operatorRetryInterval time.Duration = 30
+var maxOperatorRetries int = 5
 
 // globals for http server
 var httpListen string = ":26776"
@@ -84,6 +88,29 @@ func setPodName() {
 	}
 }
 
+// identify where the current pod is running
+func setPodLocation(os OperatorService, retryInterval time.Duration, maxRetries int) {
+	var resp *PodLocationDataResponse
+	var err error
+	var retryCounter int = maxRetries
+
+	for i := 0; i < maxRetries; i++ {
+		resp, err = os.getPodLocation(podName)
+		if err != nil {
+			log.Printf("Error: Failed to retrieve location from console-operator, retrying in %d for %d more retries\n", retryInterval, retryCounter)
+			retryCounter--
+		} else {
+			podLocData = resp
+			return
+		}
+
+		// Block and retry until location is returned
+		time.Sleep(retryInterval)
+	}
+
+	log.Printf("Error: Failed to retrieve location from console-operator")
+}
+
 // Main loop for the application
 func main() {
 	// NOTE: this is a work in progress starting to restructure this application
@@ -117,11 +144,15 @@ func main() {
 	logAggService := NewLogAggService()
 	dataService := NewDataService()
 	credService := NewCredService()
+	operatorService := NewOperatorService()
 	conmanService := NewConmanService(logAggService, credService)
 	logRotateService := NewLogRotateService(logAggService, conmanService)
 	nodeService := NewNodeService(dataService, logRotateService, logAggService, conmanService)
 	heartbeatService := NewHeartbeatService(nodeService, dataService, conmanService)
 	healthService := NewHealthService(heartbeatService, nodeService)
+
+	// Find pod location in k8s, this must block and retry
+	setPodLocation(operatorService, operatorRetryInterval, maxOperatorRetries)
 
 	// start the aggregation log
 	logAggService.respinAggLog()

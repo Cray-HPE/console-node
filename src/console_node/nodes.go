@@ -166,7 +166,7 @@ func (nm *NodeManager) doGetNewNodes() {
 			// NOTE: this should be the ONLY place where the maps of
 			//  current nodes is updated!!!
 			log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
-			newNodes := nm.dataService.acquireNewNodes(numMtn, numRvr)
+			newNodes := nm.dataService.acquireNewNodes(numMtn, numRvr, podLocData)
 			// process the new nodes
 			for i, node := range newNodes {
 				log.Printf("  Processing node: %s", node.String())
