@@ -39,6 +39,8 @@ type CredService interface {
 	getPasswords(bmcXNames []string) map[string]compcreds.CompCredentials
 	getPasswordsWithRetries(bmcXNames []string, maxTries, waitSecs int) map[string]compcreds.CompCredentials
 	ensureMountainConsoleKeysPresent()
+	MountainConsoleKey() string
+	MountainConsoleKeyPub() string
 }
 
 type CredManager struct {
@@ -56,6 +58,14 @@ func NewCredService() *CredManager {
 		mountainConsoleKey:    mountainConsoleKey,
 		mountainConsoleKeyPub: mountainConsoleKeyPub,
 	}
+}
+
+func (cm CredManager) MountainConsoleKey() string {
+	return cm.mountainConsoleKey
+}
+
+func (cm CredManager) MountainConsoleKeyPub() string {
+	return cm.mountainConsoleKeyPub
 }
 
 // Look up the creds for the input endpoints with retries

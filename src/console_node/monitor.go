@@ -46,32 +46,32 @@ var previousPublicKeyHash []byte = nil
 var previousPasswords map[string]compcreds.CompCredentials = nil
 
 // function to do check for credential changes and restart conman if necessary
-func checkForChanges() {
+func checkForChanges(conmanService ConmanService, credService CredService) {
 	restartConman := false
 
 	// check for changes in the mountain key files
-	if checkIfMountainConsoleKeysChanged() {
+	if checkIfMountainConsoleKeysChanged(credService) {
 		restartConman = true
 	}
 
 	// check for changes in river keys
-	if checkIfRiverPasswordsChanged() {
+	if checkIfRiverPasswordsChanged(credService) {
 		// the config file will be updated in the runConman thread when conman is restarted
 		restartConman = true
 	}
 
 	//restart conman if necessary
 	if restartConman {
-		signalConmanTERM()
+		conmanService.signalConmanTERM()
 	}
 }
 
 // function to continuously monitor for changes that require conman to restart
-func doMonitor() {
+func doMonitor(conmanService ConmanService, credService CredService) {
 	// NOTE: this is intended to be constantly running in its own thread
 	for {
 		// do a single monitor event
-		checkForChanges()
+		checkForChanges(conmanService, credService)
 
 		// wait for the next interval
 		time.Sleep(time.Duration(monitorIntervalSecs) * time.Second)
@@ -79,7 +79,7 @@ func doMonitor() {
 }
 
 // function to check if the passwords have changed since conman was configured
-func checkIfRiverPasswordsChanged() bool {
+func checkIfRiverPasswordsChanged(credService CredService) bool {
 	if previousPasswords == nil {
 		// this shouldn't happen due to the order of initilization, but just to be safe we skip this case.
 		return false
@@ -93,7 +93,7 @@ func checkIfRiverPasswordsChanged() bool {
 		rvrXNames = append(rvrXNames, nodeCi.BmcName)
 	}
 	// don't retry here so we don't block heartbeats with the mutex.  we can check again the next pass
-	currentPasswords := getPasswords(rvrXNames)
+	currentPasswords := credService.getPasswords(rvrXNames)
 
 	for _, nodeCi := range currentRvrNodes {
 		currentCreds, ok := currentPasswords[nodeCi.BmcName]
@@ -111,7 +111,7 @@ func checkIfRiverPasswordsChanged() bool {
 }
 
 // function to check if the console keys have changed since the last run of this function
-func checkIfMountainConsoleKeysChanged() bool {
+func checkIfMountainConsoleKeysChanged(credService CredService) bool {
 	var keysChanged bool = false
 
 	if len(currentMtnNodes) == 0 {
@@ -120,12 +120,12 @@ func checkIfMountainConsoleKeysChanged() bool {
 	}
 
 	// load hashes of both the public and private key files for comparison
-	currentPrivateKeyHash, err := hashFile(mountainConsoleKey)
+	currentPrivateKeyHash, err := hashFile(credService.MountainConsoleKey())
 	if err != nil {
 		log.Printf("Error generating a hash of the private console key: %s", err)
 		return false
 	}
-	currentPublicKeyHash, err := hashFile(mountainConsoleKeyPub)
+	currentPublicKeyHash, err := hashFile(credService.MountainConsoleKeyPub())
 	if err != nil {
 		log.Printf("Error generating a hash of the public console key: %s", err)
 		return false

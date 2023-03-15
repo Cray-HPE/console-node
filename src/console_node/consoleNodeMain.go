@@ -144,7 +144,7 @@ func main() {
 	go conmanService.runConman()
 
 	// start up the thread to monitor for configuration changes
-	go doMonitor()
+	go doMonitor(conmanService, credService)
 
 	// set up mechanism to test for killing tail functions
 	if debugOnly {
