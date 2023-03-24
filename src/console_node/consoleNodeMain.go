@@ -47,6 +47,7 @@ var debugOnly bool = false
 // Global to identify which pod this is
 var podName string = ""
 var podID string = ""
+var podLocData *PodLocationDataResponse = &PodLocationDataResponse{PodName: "", Xname: "", Alias: ""}
 
 // globals for http server
 var httpListen string = ":26776"
@@ -87,6 +88,31 @@ func setPodName() {
 	conAggLogFile = conAggLogFileBase + podName + ".log"
 }
 
+// identify where the current pod is running
+func setPodLocation(os OperatorService) {
+	var resp *PodLocationDataResponse
+	var err error
+	var retryCounter int = os.MaxOperatorRetries()
+	var retryInterval time.Duration = os.OperatorRetryInterval()
+
+	for i := 0; i < os.MaxOperatorRetries(); i++ {
+		resp, err = os.getPodLocation(podName)
+		if err != nil {
+			log.Printf("Error: Failed to retrieve location from console-operator, retrying in %f for %d more retries\n", retryInterval.Seconds(), retryCounter)
+			retryCounter--
+		} else {
+			podLocData = resp
+			return
+		}
+
+		// Block and retry until location is returned
+		time.Sleep(retryInterval)
+	}
+
+	// TODO: Should we panic here or just let non-filtered pass to the console-data
+	log.Panicf("Error: Failed to retrieve location from console-operator")
+}
+
 // Main loop for the application
 func main() {
 	// NOTE: this is a work in progress starting to restructure this application
@@ -119,6 +145,12 @@ func main() {
 	// identify this pod
 	log.Printf("Setting pod information...")
 	setPodName()
+
+	// Construct services
+	operatorService := NewOperatorService()
+
+	// Find pod location in k8s, this must block and retry
+	setPodLocation(operatorService)
 
 	// start the aggregation log
 	respinAggLog()
