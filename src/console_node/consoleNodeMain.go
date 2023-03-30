@@ -88,29 +88,22 @@ func setPodName() {
 	conAggLogFile = conAggLogFileBase + podName + ".log"
 }
 
-// identify where the current pod is running
+// identify where the current pod is running, retry infinitely
 func setPodLocation(os OperatorService) {
 	var resp *PodLocationDataResponse
 	var err error
-	var retryCounter int = os.MaxOperatorRetries()
 	var retryInterval time.Duration = os.OperatorRetryInterval()
-
-	for i := 0; i < os.MaxOperatorRetries(); i++ {
+	for {
 		resp, err = os.getPodLocation(podName)
 		if err != nil {
-			log.Printf("Error: Failed to retrieve location from console-operator, retrying in %f for %d more retries\n", retryInterval.Seconds(), retryCounter)
-			retryCounter--
+			log.Printf("Error: Failed to retrieve location from console-operator, retrying in %f\n", retryInterval.Seconds())
 		} else {
 			podLocData = resp
 			return
 		}
-
 		// Block and retry until location is returned
 		time.Sleep(retryInterval)
 	}
-
-	// TODO: Should we panic here or just let non-filtered pass to the console-data
-	log.Panicf("Error: Failed to retrieve location from console-operator")
 }
 
 // Main loop for the application
