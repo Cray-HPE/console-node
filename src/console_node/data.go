@@ -45,6 +45,12 @@ var lastHeartbeatTime string = "None"
 
 var debugCtr int = 0
 
+// Allows heartbeat to send all console information, as well as it's location to console-data through heartbeat
+type nodeConsoleInfoHeartBeat struct {
+	currNodes   []nodeConsoleInfo
+	PodLocation string // location of the current node pod in kubernetes
+}
+
 // Function to acquire new consoles to monitor
 func acquireNewNodes(numMtn, numRvr int, podLocation *PodLocationDataResponse) []nodeConsoleInfo {
 	// NOTE: in doGetNewNodes thread
@@ -95,13 +101,15 @@ func sendSingleHeartbeat() {
 
 	// gather the current nodes and assemble into json data
 	currNodes := make([]nodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
+	heartBeatPayload := nodeConsoleInfoHeartBeat{currNodes: currNodes, PodLocation: podLocData.Xname}
+
 	for _, ni := range currentRvrNodes {
-		currNodes = append(currNodes, *ni)
+		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, *ni)
 	}
 	for _, ni := range currentMtnNodes {
-		currNodes = append(currNodes, *ni)
+		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, *ni)
 	}
-	data, err := json.Marshal(currNodes)
+	data, err := json.Marshal(heartBeatPayload)
 	if err != nil {
 		log.Printf("Error marshalling data for add nodes:%s", err)
 		return
