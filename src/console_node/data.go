@@ -109,6 +109,7 @@ func sendSingleHeartbeat() {
 	for _, ni := range currentMtnNodes {
 		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, *ni)
 	}
+	log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
 	data, err := json.Marshal(heartBeatPayload)
 	if err != nil {
 		log.Printf("Error marshalling data for add nodes:%s", err)
