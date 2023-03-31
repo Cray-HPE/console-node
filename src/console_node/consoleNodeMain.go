@@ -88,7 +88,9 @@ func setPodName() {
 	conAggLogFile = conAggLogFileBase + podName + ".log"
 }
 
-// identify where the current pod is running, retry infinitely
+// identify where the current pod is running, if there is no mapping with the node alias
+// to the xname provided then pod location should be ignored. There is no guarantee that
+// console-operator will able to provide a mapping from hms-sls at all times.
 func setPodLocation(os OperatorService) {
 	var resp *PodLocationDataResponse
 	var err error
