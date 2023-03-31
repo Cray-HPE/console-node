@@ -47,8 +47,19 @@ var debugCtr int = 0
 
 // Allows heartbeat to send all console information, as well as it's location to console-data through heartbeat
 type nodeConsoleInfoHeartBeat struct {
-	currNodes   []nodeConsoleInfo
+	currNodes   []NodeConsoleInfo
 	PodLocation string // location of the current node pod in kubernetes
+}
+
+// console-data heartbeat structure
+type NodeConsoleInfo struct {
+	NodeName        string `json:"nodename"`        // node xname
+	BmcName         string `json:"bmcname"`         // bmc xname
+	BmcFqdn         string `json:"bmcfqdn"`         // full name of bmc
+	Class           string `json:"class"`           // river/mtn class
+	NID             int    `json:"nid"`             // NID of the node
+	Role            string `json:"role"`            // role of the node
+	NodeConsoleName string `json:"nodeconsolename"` // the pod console
 }
 
 // Function to acquire new consoles to monitor
@@ -100,14 +111,33 @@ func sendSingleHeartbeat() {
 	url := fmt.Sprintf("%s/consolepod/%s/heartbeat", dataAddrBase, podID)
 
 	// gather the current nodes and assemble into json data
-	currNodes := make([]nodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
+	currNodes := make([]NodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
 	heartBeatPayload := nodeConsoleInfoHeartBeat{currNodes: currNodes, PodLocation: podLocData.Xname}
 
+	// construct the NodeConsoleInfo due to marshalling issues on the console-data side.
 	for _, ni := range currentRvrNodes {
-		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, *ni)
+		consoleDataNodeInfo := NodeConsoleInfo{
+			NodeName:        ni.NodeName,
+			BmcName:         ni.BmcName,
+			BmcFqdn:         ni.BmcFqdn,
+			Class:           ni.Class,
+			NID:             ni.NID,
+			Role:            ni.Role,
+			NodeConsoleName: "",
+		}
+		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, consoleDataNodeInfo)
 	}
 	for _, ni := range currentMtnNodes {
-		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, *ni)
+		consoleDataNodeInfo := NodeConsoleInfo{
+			NodeName:        ni.NodeName,
+			BmcName:         ni.BmcName,
+			BmcFqdn:         ni.BmcFqdn,
+			Class:           ni.Class,
+			NID:             ni.NID,
+			Role:            ni.Role,
+			NodeConsoleName: "",
+		}
+		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, consoleDataNodeInfo)
 	}
 	log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
 	data, err := json.Marshal(heartBeatPayload)
