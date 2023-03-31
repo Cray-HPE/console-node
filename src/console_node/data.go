@@ -47,7 +47,7 @@ var debugCtr int = 0
 
 // Allows heartbeat to send all console information, as well as it's location to console-data through heartbeat
 type nodeConsoleInfoHeartBeat struct {
-	currNodes   []NodeConsoleInfo
+	CurrNodes   []NodeConsoleInfo
 	PodLocation string // location of the current node pod in kubernetes
 }
 
@@ -112,7 +112,7 @@ func sendSingleHeartbeat() {
 
 	// gather the current nodes and assemble into json data
 	currNodes := make([]NodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
-	heartBeatPayload := nodeConsoleInfoHeartBeat{currNodes: currNodes, PodLocation: podLocData.Xname}
+	heartBeatPayload := nodeConsoleInfoHeartBeat{CurrNodes: currNodes, PodLocation: podLocData.Xname}
 
 	// construct the NodeConsoleInfo due to marshalling issues on the console-data side.
 	for _, ni := range currentRvrNodes {
@@ -125,7 +125,7 @@ func sendSingleHeartbeat() {
 			Role:            ni.Role,
 			NodeConsoleName: "",
 		}
-		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, consoleDataNodeInfo)
+		heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
 	}
 	for _, ni := range currentMtnNodes {
 		consoleDataNodeInfo := NodeConsoleInfo{
@@ -137,7 +137,7 @@ func sendSingleHeartbeat() {
 			Role:            ni.Role,
 			NodeConsoleName: "",
 		}
-		heartBeatPayload.currNodes = append(heartBeatPayload.currNodes, consoleDataNodeInfo)
+		heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
 	}
 	log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
 	data, err := json.Marshal(heartBeatPayload)
