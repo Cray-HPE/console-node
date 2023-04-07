@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2022 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2023 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -119,7 +119,7 @@ func doGetNewNodes() {
 			// NOTE: this should be the ONLY place where the maps of
 			//  current nodes is updated!!!
 			log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
-			newNodes := acquireNewNodes(numMtn, numRvr)
+			newNodes := acquireNewNodes(numMtn, numRvr, podLocData)
 			// process the new nodes
 			for i, node := range newNodes {
 				log.Printf("  Processing node: %s", node.String())

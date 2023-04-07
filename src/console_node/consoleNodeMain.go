@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2022 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2023 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -47,6 +47,7 @@ var debugOnly bool = false
 // Global to identify which pod this is
 var podName string = ""
 var podID string = ""
+var podLocData *PodLocationDataResponse = &PodLocationDataResponse{PodName: "", Xname: "", Alias: ""}
 
 // globals for http server
 var httpListen string = ":26776"
@@ -87,6 +88,26 @@ func setPodName() {
 	conAggLogFile = conAggLogFileBase + podName + ".log"
 }
 
+// identify where the current pod is running, if there is no mapping with the node alias
+// to the xname provided then pod location should be ignored. There is no guarantee that
+// console-operator will able to provide a mapping from hms-sls at all times.
+func setPodLocation(os OperatorService) {
+	var resp *PodLocationDataResponse
+	var err error
+	var retryInterval time.Duration = os.OperatorRetryInterval()
+	for {
+		resp, err = os.getPodLocation(podName)
+		if err != nil {
+			log.Printf("Error: Failed to retrieve location from console-operator, retrying in %f\n", retryInterval.Seconds())
+		} else {
+			podLocData = resp
+			return
+		}
+		// Block and retry until location is returned
+		time.Sleep(retryInterval)
+	}
+}
+
 // Main loop for the application
 func main() {
 	// NOTE: this is a work in progress starting to restructure this application
@@ -120,6 +141,12 @@ func main() {
 	log.Printf("Setting pod information...")
 	setPodName()
 
+	// Construct services
+	operatorService := NewOperatorService()
+
+	// Find pod location in k8s, this must block and retry
+	setPodLocation(operatorService)
+
 	// start the aggregation log
 	respinAggLog()
 
@@ -139,6 +166,9 @@ func main() {
 
 	// start up the thread that runs conman
 	go runConman()
+
+	// start up the thread to monitor for configuration changes
+	go doMonitor()
 
 	// set up mechanism to test for killing tail functions
 	if debugOnly {

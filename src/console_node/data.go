@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2022 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2023 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -45,29 +45,50 @@ var lastHeartbeatTime string = "None"
 
 var debugCtr int = 0
 
+// Allows heartbeat to send all console information, as well as it's location to console-data through heartbeat
+type nodeConsoleInfoHeartBeat struct {
+	CurrNodes   []NodeConsoleInfo
+	PodLocation string // location of the current node pod in kubernetes
+}
+
+// console-data heartbeat structure
+type NodeConsoleInfo struct {
+	NodeName        string `json:"nodename"`        // node xname
+	BmcName         string `json:"bmcname"`         // bmc xname
+	BmcFqdn         string `json:"bmcfqdn"`         // full name of bmc
+	Class           string `json:"class"`           // river/mtn class
+	NID             int    `json:"nid"`             // NID of the node
+	Role            string `json:"role"`            // role of the node
+	NodeConsoleName string `json:"nodeconsolename"` // the pod console
+}
+
 // Function to acquire new consoles to monitor
-func acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
+func acquireNewNodes(numMtn, numRvr int, podLocation *PodLocationDataResponse) []nodeConsoleInfo {
 	// NOTE: in doGetNewNodes thread
 	log.Printf("Acquiring new nodes mtn: %d, rvr: %d", numMtn, numRvr)
-
 	// put together data package
 	type ReqData struct {
-		NumMtn int `json:"nummtn"` // Requested number of Mountain nodes
-		NumRvr int `json:"numrvr"` // Requested number of River nodes
+		NumMtn int    `json:"nummtn"` // Requested number of Mountain nodes
+		NumRvr int    `json:"numrvr"` // Requested number of River nodes
+		Alias  string `json:"alias"`  // Alias of current node pod is running on
+		Xname  string `json:"xname"`  // Xname of current node pod is running on
 	}
-	data, err := json.Marshal(ReqData{NumMtn: numMtn, NumRvr: numRvr})
+	data, err := json.Marshal(ReqData{
+		NumMtn: numMtn,
+		NumRvr: numRvr,
+		Alias:  podLocation.Alias,
+		Xname:  podLocation.Xname,
+	})
 	if err != nil {
 		log.Printf("Error marshalling data:%s", err)
 		return nil
 	}
-
 	// make the call to console-data
 	url := fmt.Sprintf("%s/consolepod/%s/acquire", dataAddrBase, podID)
 	rb, _, err := postURL(url, data, nil)
 	if err != nil {
 		log.Printf("Error in console-data acquire: %s", err)
 	}
-
 	// process the return
 	var newNodes []nodeConsoleInfo = nil
 	if rb != nil {
@@ -77,7 +98,6 @@ func acquireNewNodes(numMtn, numRvr int) []nodeConsoleInfo {
 			log.Printf("Error unmarshalling heartbeat return data: %s", err)
 		}
 	}
-
 	return newNodes
 }
 
@@ -91,14 +111,36 @@ func sendSingleHeartbeat() {
 	url := fmt.Sprintf("%s/consolepod/%s/heartbeat", dataAddrBase, podID)
 
 	// gather the current nodes and assemble into json data
-	currNodes := make([]nodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
+	currNodes := make([]NodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
+	heartBeatPayload := nodeConsoleInfoHeartBeat{CurrNodes: currNodes, PodLocation: podLocData.Xname}
+
+	// construct the NodeConsoleInfo due to marshalling issues on the console-data side.
 	for _, ni := range currentRvrNodes {
-		currNodes = append(currNodes, *ni)
+		consoleDataNodeInfo := NodeConsoleInfo{
+			NodeName:        ni.NodeName,
+			BmcName:         ni.BmcName,
+			BmcFqdn:         ni.BmcFqdn,
+			Class:           ni.Class,
+			NID:             ni.NID,
+			Role:            ni.Role,
+			NodeConsoleName: "",
+		}
+		heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
 	}
 	for _, ni := range currentMtnNodes {
-		currNodes = append(currNodes, *ni)
+		consoleDataNodeInfo := NodeConsoleInfo{
+			NodeName:        ni.NodeName,
+			BmcName:         ni.BmcName,
+			BmcFqdn:         ni.BmcFqdn,
+			Class:           ni.Class,
+			NID:             ni.NID,
+			Role:            ni.Role,
+			NodeConsoleName: "",
+		}
+		heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
 	}
-	data, err := json.Marshal(currNodes)
+	log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
+	data, err := json.Marshal(heartBeatPayload)
 	if err != nil {
 		log.Printf("Error marshalling data for add nodes:%s", err)
 		return
