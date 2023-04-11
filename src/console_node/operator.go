@@ -36,31 +36,23 @@ import (
 type OperatorService interface {
 	getPodLocation(podId string) (podLoc *PodLocationDataResponse, err error)
 	OperatorRetryInterval() time.Duration
-	MaxOperatorRetries() int
 }
 
 type OperatorManager struct {
 	operatorAddrBase      string
 	operatorRetryInterval time.Duration
-	maxOperatorRetries    int
 }
 
 func NewOperatorService() *OperatorManager {
 	var operatorRetryInterval time.Duration = time.Duration(30 * float64(time.Second))
-	var maxOperatorRetries int = 5
 	return &OperatorManager{
 		operatorAddrBase:      "http://cray-console-operator/console-operator/v1",
 		operatorRetryInterval: operatorRetryInterval,
-		maxOperatorRetries:    maxOperatorRetries,
 	}
 }
 
 func (om OperatorManager) OperatorRetryInterval() time.Duration {
 	return om.operatorRetryInterval
-}
-
-func (om OperatorManager) MaxOperatorRetries() int {
-	return om.maxOperatorRetries
 }
 
 type PodLocationDataResponse struct {
