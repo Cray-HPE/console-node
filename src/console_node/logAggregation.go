@@ -52,6 +52,10 @@ var conAggLogFile string = ""
 // map to cancel threads tailing log files
 var tailThreads map[string]*context.CancelFunc = make(map[string]*context.CancelFunc)
 
+// Kafka topic for writing conman console logs
+const consoleLogsTopic = "cray-console-logs"
+
+
 // Set up tailing a log file to add to the aggregation file
 func aggregateFile(xname string) bool {
 	// NOTE: in update config thread
@@ -69,6 +73,8 @@ func aggregateFile(xname string) bool {
 	}
 	return newFile
 }
+
+
 
 // Test function to kill the 'tail' functionality when 'killTails.txt' is created
 func killTails() {
@@ -152,6 +158,13 @@ func watchConsoleLogFile(ctx context.Context, xname string) {
 		case line := <-tf.Lines:
 			// output the line from the channel
 			writeToAggLog(fmt.Sprintf("console.hostname: %s %s", xname, line.Text))
+
+			// output the line from the channel to kafka bus
+			var messageID *string = nil
+			if err := writeToKafka("cray-console-logs", line.Text, messageID); err != nil {
+				log.Printf("FATAL ERROR: Failed to write to kafka topic")
+			}
+
 		}
 	}
 }
