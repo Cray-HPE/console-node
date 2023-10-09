@@ -96,6 +96,8 @@ cray-service:
         name: cray-console-logs
       - mountPath: /tmp/consoleAgg
         name: cray-console-node-agg
+      - mountPath: /configs
+        name: kafka-brokers
     log-forwarding:
       name: log-forwarding
       image:
@@ -121,6 +123,10 @@ cray-service:
       name: cray-console-node-agg
       persistentVolumeClaim:
         claimName: cray-console-node-agg-data-claim
+    cray-console-node-brokers:
+      name: kafka-brokers
+      configMap:
+        name: hms-hmcollector-kafka-brokers
   storageClass: ceph-cephfs-external
   persistentVolumeClaims:
     agg-data-claim:

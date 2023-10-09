@@ -147,6 +147,12 @@ func main() {
 	// Find pod location in k8s, this must block and retry
 	setPodLocation(operatorService)
 
+	// Initalize and configure the Kafka's logging mechanism
+	SetupLogging()
+
+	// Intialiaze kafka configuration and establish connections to the brokers
+	setupKafka()
+
 	// start the aggregation log
 	respinAggLog()
 
@@ -215,6 +221,12 @@ func main() {
 
 	// release all the current nodes immediately so they can be re-assigned
 	releaseAllNodes()
+
+
+
+
+
+
 
 	// stop the server from taking requests
 	// NOTE: this waits for active connections to finish

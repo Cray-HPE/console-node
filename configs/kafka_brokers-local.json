@@ -1,0 +1,8 @@
+[
+  {
+    "BrokerAddress": "kafka:9092",
+    "TopicsToPublish": {
+      "cray-console-logs": null
+    }
+  }
+]

@@ -23,13 +23,15 @@
 #
 # Dockerfile for cray-console-node service
 
+
 # Build will be where we build the go binary
-FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.4 as build
+FROM arti.hpc.amslabs.hpecorp.net/csm-docker-remote/stable/registry.suse.com/suse/sle15:15.4 as build
 
 # The current sles15sp4 base image starts with a lock on coreutils, but this prevents a necessary
 # security patch from being applied. Thus, adding this command to remove the lock if it is
 # present.
 RUN zypper --non-interactive removelock coreutils || true
+
 
 ARG SLES_MIRROR=https://slemaster.us.cray.com/SUSE
 ARG ARCH=x86_64
@@ -59,8 +61,21 @@ RUN set -eux \
 #  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Product-SLES/15-SP4/${ARCH}/update/ sles15sp4-Product-SLES-update \
 #  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-INSTALLER/15-SP4/${ARCH}/update/ sles15sp4-SLE-INSTALLER-update \
   && zypper --non-interactive clean \
-  && zypper --non-interactive install go1.19
+  && zypper --non-interactive install go1.19 \
+  && zypper --non-interactive install librdkafka1 \
+  && zypper --non-interactive install git gcc-c++ make
 
+  RUN git clone https://github.com/confluentinc/librdkafka.git && \
+    cd librdkafka && \
+    ./configure && \
+    make && \
+    make install
+
+# RUN curl -LO https://golang.org/dl/go1.19.linux-amd64.tar.gz
+# RUN tar -C /usr/local -xzf go1.19.linux-amd64.tar.gz
+# RUN rm go1.19.linux-amd64.tar.gz
+
+# ENV PATH="/usr/local/go/bin:${PATH}"
 # Apply security patches
 COPY zypper-refresh-patch-clean.sh /
 RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
@@ -76,7 +91,9 @@ COPY vendor/ $GOPATH/src
 # Build configure_conman
 RUN set -ex \
     && go env -w GO111MODULE=auto \
-    && go build -v -i -o /app/console_node $GOPATH/src/console_node
+    && go build -v -i -o /app/console_node $GOPATH/src/console_node 
+   
+
 
 # NOTE:
 #  We need to switch to the below image, but for now it does not include the 'nobody' user
@@ -101,6 +118,7 @@ FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp4:sles15sp4
 # present.
 RUN zypper --non-interactive removelock coreutils || true
 
+
 # Install conman application from package
 RUN set -eux \
     && zypper --non-interactive install conman less vi openssh jq curl tar
@@ -115,6 +133,7 @@ RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
 
 # Copy in the needed files
 COPY --from=build /app/console_node /app/
+COPY --from=build /usr/local/lib/librdkafka* /usr/local/lib/
 COPY scripts/conman.conf /app/conman_base.conf
 COPY scripts/ssh-console /usr/bin
 
@@ -126,7 +145,11 @@ USER 65534:65534
 ENV VAULT_ADDR="http://cray-vault.vault:8200"
 ENV VAULT_SKIP_VERIFY="true"
 
+ENV LD_LIBRARY_PATH=/usr/local/lib
+RUN export LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+
 RUN echo 'alias ll="ls -l"' > /app/bashrc
 RUN echo 'alias vi="vim"' >> /app/bashrc
 
+# RUN ldd /app/console_node
 ENTRYPOINT ["/app/console_node"]
