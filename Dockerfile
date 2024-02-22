@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright 2020-2022 Hewlett Packard Enterprise Development LP
+# (C) Copyright 2020-2022, 2024 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -26,44 +26,16 @@
 # Build will be where we build the go binary
 FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.4 as build
 
-# The current sles15sp4 base image starts with a lock on coreutils, but this prevents a necessary
-# security patch from being applied. Thus, adding this command to remove the lock if it is
-# present.
-RUN zypper --non-interactive removelock coreutils || true
-
-ARG SLES_MIRROR=https://slemaster.us.cray.com/SUSE
+ARG SP=4
 ARG ARCH=x86_64
-RUN set -eux \
-  && zypper --non-interactive rr --all \
-  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Basesystem/15-SP4/${ARCH}/product/ sles15sp4-Module-Basesystem-product \
-  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Basesystem/15-SP4/${ARCH}/update/ sles15sp4-Module-Basesystem-update \
-  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Development-Tools/15-SP4/${ARCH}/product/ sles15sp4-Module-Development-Tools-product \
-  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Development-Tools/15-SP4/${ARCH}/update/ sles15sp4-Module-Development-Tools-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Containers/15-SP4/${ARCH}/product/ sles15sp4-Module-Containers-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Containers/15-SP4/${ARCH}/update/ sles15sp4-Module-Containers-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Desktop-Applications/15-SP4/${ARCH}/product/ sles15sp4-Module-Desktop-Applications-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Desktop-Applications/15-SP4/${ARCH}/update/ sles15sp4-Module-Desktop-Applications-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-HPC/15-SP4/${ARCH}/product/ sles15sp4-Module-HPC-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-HPC/15-SP4/${ARCH}/update/ sles15sp4-Module-HPC-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Legacy/15-SP4/${ARCH}/product/ sles15sp4-Module-Legacy-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Legacy/15-SP4/${ARCH}/update/ sles15sp4-Module-Legacy-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Public-Cloud/15-SP4/${ARCH}/product/ sles15sp4-Module-Public-Cloud-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Public-Cloud/15-SP4/${ARCH}/update/ sles15sp4-Module-Public-Cloud-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Python2/15-SP4/${ARCH}/product/ sles15sp4-Module-Python2-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Python2/15-SP4/${ARCH}/update/ sles15sp4-Module-Python2-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Server-Applications/15-SP4/${ARCH}/product/ sles15sp4-Module-Server-Applications-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Server-Applications/15-SP4/${ARCH}/update/ sles15sp4-Module-Server-Applications-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Web-Scripting/15-SP4/${ARCH}/product/ sles15sp4-Module-Web-Scripting-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Web-Scripting/15-SP4/${ARCH}/update/ sles15sp4-Module-Web-Scripting-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Product-SLES/15-SP4/${ARCH}/product/ sles15sp4-Product-SLES-product \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Product-SLES/15-SP4/${ARCH}/update/ sles15sp4-Product-SLES-update \
-#  && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-INSTALLER/15-SP4/${ARCH}/update/ sles15sp4-SLE-INSTALLER-update \
-  && zypper --non-interactive clean \
-  && zypper --non-interactive install go1.19
 
-# Apply security patches
+# Do zypper operations using a wrapper script, to isolate the necessary artifactory authentication
+COPY zypper-docker-build.sh /
+# The above script calls the following script, so we need to copy it as well
 COPY zypper-refresh-patch-clean.sh /
-RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
+RUN --mount=type=secret,id=ARTIFACTORY_READONLY_USER --mount=type=secret,id=ARTIFACTORY_READONLY_TOKEN \
+    ./zypper-docker-build.sh go1.19 && \
+    rm /zypper-docker-build.sh /zypper-refresh-patch-clean.sh
 
 # Configure go env - installed as package but not quite configured
 ENV GOPATH=/usr/local/golib
@@ -96,22 +68,16 @@ RUN set -ex \
 # Start with a fresh image so build tools are not included
 FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp4:sles15sp4 as base
 
-# The current sles15sp4 base image starts with a lock on coreutils, but this prevents a necessary
-# security patch from being applied. Thus, adding this command to remove the lock if it is
-# present.
-RUN zypper --non-interactive removelock coreutils || true
+ARG SP=4
+ARG ARCH=x86_64
 
-# Install conman application from package
-RUN set -eux \
-    && zypper --non-interactive install conman less vi openssh jq curl tar
-
-# NOTE: polkit is not needed but is included with one of the above packages.
-#  It has frequent security issues so just remove it here.
-RUN zypper --non-interactive rm polkit
-
-# Apply security patches
+# Do zypper operations using a wrapper script, to isolate the necessary artifactory authentication
+COPY zypper-docker-build.sh /
+# The above script calls the following script, so we need to copy it as well
 COPY zypper-refresh-patch-clean.sh /
-RUN /zypper-refresh-patch-clean.sh && rm /zypper-refresh-patch-clean.sh
+RUN --mount=type=secret,id=ARTIFACTORY_READONLY_USER --mount=type=secret,id=ARTIFACTORY_READONLY_TOKEN \
+    ./zypper-docker-build.sh conman less vi openssh jq curl tar --remove polkit && \
+    rm /zypper-docker-build.sh /zypper-refresh-patch-clean.sh
 
 # Copy in the needed files
 COPY --from=build /app/console_node /app/
