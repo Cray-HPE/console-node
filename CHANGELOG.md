@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Disabled concurrent Jenkins builds on same branch/commit
 - Added build timeout to avoid hung builds
+- CASMCMS-8918: Get SLES packages from `artifactory` instead of `slemaster` to avoid build problems
 
 ### Removed
 - Removed defunct files leftover from previous versioning system
