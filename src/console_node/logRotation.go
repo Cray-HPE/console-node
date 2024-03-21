@@ -193,17 +193,14 @@ func updateLogRotateConf() {
 		}
 	}
 
-	// Add all the river nodes
+	// Add all nodes
 	consoleLogBackupDir := "/var/log/conman.old"
-	for xname := range currentRvrNodes {
-		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
-	}
-
-	// Add all the mountain nodes
-	for xname := range currentMtnNodes {
-		fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
-		writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
+	allNodes := [3](*map[string]*nodeConsoleInfo){&currentRvrNodes, &currentPdsNodes, &currentMtnNodes}
+	for _, ar := range allNodes {
+		for xname := range *ar {
+			fn := fmt.Sprintf("/var/log/conman/console.%s", xname)
+			writeConfigEntry(lrf, fn, consoleLogBackupDir, logRotConNumRotate, logRotConFileSize)
+		}
 	}
 
 	fmt.Fprintln(lrf, "")
