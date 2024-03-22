@@ -118,18 +118,18 @@ func doGetNewNodes() {
 		if numRvr > 0 || numMtn > 0 {
 			// NOTE: this should be the ONLY place where the maps of
 			//  current nodes is updated!!!
-			log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
+			//log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
 			newNodes := acquireNewNodes(numMtn, numRvr, podLocData)
 			// process the new nodes
 			for i, node := range newNodes {
-				log.Printf("  Processing node: %s", node.String())
+				//log.Printf("  Processing node: %s", node.String())
 				if node.isRiver() {
 					currentRvrNodes[node.NodeName] = &newNodes[i]
-					log.Printf("  Adding new river node: %s", node.String())
+					//log.Printf("  Adding new river node: %s", node.String())
 					changed = true
 				} else if node.isMountain() {
 					currentMtnNodes[node.NodeName] = &newNodes[i]
-					log.Printf("  Adding new mtn node: %s", node.String())
+					//log.Printf("  Adding new mtn node: %s", node.String())
 					changed = true
 				}
 			}
@@ -263,7 +263,7 @@ func updateNodesPerPod() {
 
 	// NOTE: in doGetNewNodes thread
 
-	log.Printf("Updating nodes per pod")
+	//log.Printf("Updating nodes per pod")
 	// open the state file
 	sf, err := os.Open(targetNodeFile)
 	if err != nil {
@@ -315,5 +315,5 @@ func updateNodesPerPod() {
 	if newMtn >= 0 {
 		targetMtnNodes = newMtn
 	}
-	log.Printf("  New target nodes - mtn: %d, rvr: %d", newMtn, newRvr)
+	//log.Printf("  New target nodes - mtn: %d, rvr: %d", newMtn, newRvr)
 }

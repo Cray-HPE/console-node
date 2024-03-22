@@ -66,7 +66,7 @@ func SendResponseJSON(w http.ResponseWriter, sc int, data interface{}) {
 // Helper function to execute an http POST command
 func postURL(URL string, requestBody []byte, requestHeaders map[string]string) ([]byte, int, error) {
 	var err error = nil
-	log.Printf("postURL URL: %s\n", URL)
+	//log.Printf("postURL URL: %s\n", URL)
 	req, err := http.NewRequest("POST", URL, bytes.NewReader(requestBody))
 	if err != nil {
 		// handle error
@@ -87,7 +87,7 @@ func postURL(URL string, requestBody []byte, requestHeaders map[string]string) (
 		return nil, -1, err
 	}
 
-	log.Printf("postURL Response Status code: %d\n", resp.StatusCode)
+	//log.Printf("postURL Response Status code: %d\n", resp.StatusCode)
 	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -102,7 +102,7 @@ func postURL(URL string, requestBody []byte, requestHeaders map[string]string) (
 // Helper function to execute an http command
 func getURL(URL string, requestHeaders map[string]string) ([]byte, int, error) {
 	var err error = nil
-	log.Printf("getURL URL: %s\n", URL)
+	//log.Printf("getURL URL: %s\n", URL)
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
 		// handle error
@@ -121,7 +121,7 @@ func getURL(URL string, requestHeaders map[string]string) ([]byte, int, error) {
 		log.Printf("getURL Error on request to %s: %s", URL, err)
 		return nil, -1, err
 	}
-	log.Printf("getURL Response Status code: %d\n", resp.StatusCode)
+	//log.Printf("getURL Response Status code: %d\n", resp.StatusCode)
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		// handle error

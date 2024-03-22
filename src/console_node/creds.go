@@ -88,7 +88,7 @@ func getPasswords(bmcXNames []string) map[string]compcreds.CompCredentials {
 	}
 
 	// Get the passwords from Hashicorp Vault
-	log.Print("Gathering creds from vault")
+	//log.Print("Gathering creds from vault")
 
 	// Create the Vault adapter and connect to Vault
 	ss, err := sstorage.NewVaultAdapter("secret")

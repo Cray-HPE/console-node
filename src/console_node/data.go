@@ -65,7 +65,7 @@ type NodeConsoleInfo struct {
 // Function to acquire new consoles to monitor
 func acquireNewNodes(numMtn, numRvr int, podLocation *PodLocationDataResponse) []nodeConsoleInfo {
 	// NOTE: in doGetNewNodes thread
-	log.Printf("Acquiring new nodes mtn: %d, rvr: %d", numMtn, numRvr)
+	//log.Printf("Acquiring new nodes mtn: %d, rvr: %d", numMtn, numRvr)
 	// put together data package
 	type ReqData struct {
 		NumMtn int    `json:"nummtn"` // Requested number of Mountain nodes
@@ -139,7 +139,7 @@ func sendSingleHeartbeat() {
 		}
 		heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
 	}
-	log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
+	//log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
 	data, err := json.Marshal(heartBeatPayload)
 	if err != nil {
 		log.Printf("Error marshalling data for add nodes:%s", err)
@@ -151,7 +151,7 @@ func sendSingleHeartbeat() {
 	lastHeartbeatTime = t.Format(time.RFC3339)
 
 	// make the http call
-	log.Printf("Pod: %s sending heartbeat", podID)
+	//log.Printf("Pod: %s sending heartbeat", podID)
 	rb, _, err := postURL(url, data, nil)
 	if err != nil {
 		log.Printf("Error sending heartbeat: %s", err)
