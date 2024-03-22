@@ -62,7 +62,7 @@ type PodLocationDataResponse struct {
 }
 
 func (om OperatorManager) getPodLocation(podID string) (data *PodLocationDataResponse, err error) {
-	log.Printf("Getting pod location from console-operator for pod %s\n", podID)
+	//log.Printf("Getting pod location from console-operator for pod %s\n", podID)
 	url := fmt.Sprintf("%s/location/%s", om.operatorAddrBase, podID)
 	rb, sc, err := getURL(url, nil)
 	if err != nil {
