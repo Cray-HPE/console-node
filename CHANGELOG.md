@@ -6,8 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Changed
-- CASMCMS-8918: Get SLES packages from `artifactory` instead of `slemaster` to avoid build problems
 
 ## [2.0.0] - 2023-04-05
 ### Changed
@@ -15,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - CASMCMS-8252: Updated header of update_versions.conf to reflect new tool options
  - CASMCMS-7169: Conman will be restarted if there is a change to the credentials
  - CASMCMS-7167: Implementing location api for pod location data to filter through console data
+### Changed 2024-04-26
+- CASMCMS-8918: Get SLES packages from `artifactory` instead of `slemaster` to avoid build problems
 
 ### Fixed
  - CASMCMS-8252: Update Chart with correct image and chart version strings during builds.
