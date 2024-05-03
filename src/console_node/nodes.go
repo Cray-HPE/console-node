@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2023 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2024 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -57,6 +57,11 @@ func (node nodeConsoleInfo) isRiver() bool {
 	return node.Class == "River"
 }
 
+// Function to determine if a node is Paradise hardware
+func (node nodeConsoleInfo) isParadise() bool {
+	return node.Class == "Paradise"
+}
+
 // Provide a function to convert struct to string
 func (nc nodeConsoleInfo) String() string {
 	return fmt.Sprintf("NodeName:%s, BmcName:%s, BmcFqdn:%s, Class:%s, NID:%d, Role:%s",
@@ -64,9 +69,15 @@ func (nc nodeConsoleInfo) String() string {
 }
 
 // Globals for managing nodes being watched
+// NOTE: the current nodes need to be kept in 3 distinct groups:
+//
+//	River Nodes: connect through ipmi protocol directly through conman
+//	Mountain Nodes: connect through expect script via passwordless ssh
+//	Paradise Nodes: connect through expect script via password based ssh
 var currNodesMutex = &sync.Mutex{}
 var currentMtnNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
 var currentRvrNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
+var currentPdsNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
 
 // Number of nodes this pod should be watching
 var targetRvrNodes int = -1
@@ -118,18 +129,19 @@ func doGetNewNodes() {
 		if numRvr > 0 || numMtn > 0 {
 			// NOTE: this should be the ONLY place where the maps of
 			//  current nodes is updated!!!
-			log.Printf("Acquiring new nodes: %d, %d", numMtn, numRvr)
+			// NOTE: paradise nodes are included in mountain count
 			newNodes := acquireNewNodes(numMtn, numRvr, podLocData)
 			// process the new nodes
 			for i, node := range newNodes {
-				log.Printf("  Processing node: %s", node.String())
+				//log.Printf("  Processing node: %s", node.String())
 				if node.isRiver() {
 					currentRvrNodes[node.NodeName] = &newNodes[i]
-					log.Printf("  Adding new river node: %s", node.String())
 					changed = true
 				} else if node.isMountain() {
 					currentMtnNodes[node.NodeName] = &newNodes[i]
-					log.Printf("  Adding new mtn node: %s", node.String())
+					changed = true
+				} else if node.isParadise() {
+					currentPdsNodes[node.NodeName] = &newNodes[i]
 					changed = true
 				}
 			}
@@ -138,7 +150,7 @@ func doGetNewNodes() {
 		}
 	} else {
 		log.Printf("Skipping acquire - at capacity. CurRvr:%d, TarRvr:%d, CurMtn:%d, TarMtn:%d",
-			len(currentRvrNodes), targetRvrNodes, len(currentMtnNodes), targetMtnNodes)
+			len(currentRvrNodes), targetRvrNodes, len(currentMtnNodes)+len(currentPdsNodes), targetMtnNodes)
 	}
 
 	// See if we have too many nodes
@@ -203,17 +215,30 @@ func rebalanceNodes() bool {
 	}
 
 	// release mtn nodes until match target number
-	// NOTE: map iteration is random
-	for key, ni := range currentMtnNodes {
-		if len(currentMtnNodes) > targetMtnNodes {
-			// remove another one
+	// NOTE: paradise nodes count towards mountain limits, remove from both
+	for len(currentMtnNodes)+len(currentPdsNodes) > targetMtnNodes {
+		// balance removal so take from whichever pool is larger, one at a time
+		targetPool := &currentPdsNodes
+		if len(currentMtnNodes) > len(currentPdsNodes) {
+			targetPool = &currentMtnNodes
+		}
+
+		// make sure we didn't hit some weird condition where both lists are empty
+		if len(*targetPool) == 0 {
+			break
+		}
+
+		// remove a node from the target pool
+		// NOTE: map iteration is random - use it to grab a random node to remove
+		for key, ni := range *targetPool {
+			// remove node
 			rn = append(rn, *ni)
-			delete(currentMtnNodes, key)
+			delete(*targetPool, key)
 
 			// stop tailing this file
 			stopTailing(key)
-		} else {
-			// done so break
+
+			// only want to remove one at a time
 			break
 		}
 	}
@@ -242,6 +267,9 @@ func releaseNode(xname string) bool {
 		found = true
 	} else if _, ok := currentMtnNodes[xname]; ok {
 		delete(currentMtnNodes, xname)
+		found = true
+	} else if _, ok := currentPdsNodes[xname]; ok {
+		delete(currentPdsNodes, xname)
 		found = true
 	}
 

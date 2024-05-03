@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright 2020-2022, 2024 Hewlett Packard Enterprise Development LP
+# (C) Copyright 2020-2022 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -82,7 +82,8 @@ RUN --mount=type=secret,id=ARTIFACTORY_READONLY_USER --mount=type=secret,id=ARTI
 # Copy in the needed files
 COPY --from=build /app/console_node /app/
 COPY scripts/conman.conf /app/conman_base.conf
-COPY scripts/ssh-console /usr/bin
+COPY scripts/ssh-key-console /usr/bin
+COPY scripts/ssh-pwd-console /usr/bin
 
 # Change ownership of the app dir and switch to user 'nobody'
 RUN chown -Rv 65534:65534 /app /etc/conman.conf

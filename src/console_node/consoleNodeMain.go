@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2023 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2024 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -234,20 +234,20 @@ func releaseAllNodes() {
 	// gather all current nodes
 	var rn []nodeConsoleInfo
 
-	// release river nodes
-	for key, ni := range currentRvrNodes {
-		// record and stop tailing
-		rn = append(rn, *ni)
-		stopTailing(key)
+	// iterate through all nodes to stop tailing into the aggregation logs
+	allNodes := [3](*map[string]*nodeConsoleInfo){&currentRvrNodes, &currentPdsNodes, &currentMtnNodes}
+	for _, ar := range allNodes {
+		// release river nodes
+		for key, ni := range *ar {
+			// record and stop tailing
+			rn = append(rn, *ni)
+			stopTailing(key)
+		}
 	}
-	currentRvrNodes = make(map[string]*nodeConsoleInfo)
 
-	// release mtn nodes
-	for key, ni := range currentMtnNodes {
-		// record and stop tailing
-		rn = append(rn, *ni)
-		stopTailing(key)
-	}
+	// release all current node lists
+	currentRvrNodes = make(map[string]*nodeConsoleInfo)
+	currentPdsNodes = make(map[string]*nodeConsoleInfo)
 	currentMtnNodes = make(map[string]*nodeConsoleInfo)
 
 	// release the nodes from console-data
