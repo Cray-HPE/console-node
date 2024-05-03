@@ -1,6 +1,6 @@
 #!/usr/bin/expect --
 
-# Copyright 2020-2021 Hewlett Packard Enterprise Development LP
+# Copyright 2024 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -23,25 +23,38 @@
 # (MIT License)
 
 # This can be called from within the context of conman to
-# establish an ssh connection to a Mountain node console.
+# establish an ssh connection to a node console requiring a user name
+# and password to authenticate.
 # Usage and examples below assume this script's name is
-# ssh-console and located on the system under /usr/bin
+# ssh-pwd-console and located on the system under /usr/bin
 #
 # Usage: ssh-console xname
-#  Example: ssh-console x5000c3s6b0n0
+#  Example: ssh-pwd-console x5000c3s6b0n0 USER PASSWORD
 #
 # Example /etc/conman.conf entry:
-# console name="x5000c3s6b0n0" dev="/usr/bin/ssh-console x5000c3s6b0n0"
+# console name="x3000c0s33b4n0" dev="/app/ssh-pwd-console x3000c0s33b4 USER PASSWORD"
 #
 
 set env(TERM) xterm
-set controller [string range [lindex $argv 0] 0 end-2]
-set session [string range [lindex $argv 0] end-1 end]
+
 set timeout -1
-set pid [spawn ssh -o ServerAliveInterval=180 -o ServerAliveCountMax=5 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i /var/log/console/conman.key $session@$controller]
+set bmc [lindex $argv 0]
+set usr [lindex $argv 1]
+set paswd [lindex $argv 2]
+
+# connect to an ssh session
+set pid [spawn ssh -p 2200 -o ServerAliveInterval=180 -o ServerAliveCountMax=5 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $usr@$bmc ]
+
+# reply with the password when challenged
+expect "password: "
+send -- "$paswd\r"
+
+# set up the exit condition to kill the ssh session
 exit -onexit {
   exec kill $pid
   wait $pid
   exp_exit
 }
+
+# go into interactive mode
 interact

@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2023 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2024 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -111,35 +111,27 @@ func sendSingleHeartbeat() {
 	url := fmt.Sprintf("%s/consolepod/%s/heartbeat", dataAddrBase, podID)
 
 	// gather the current nodes and assemble into json data
-	currNodes := make([]NodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes))
+	currNodes := make([]NodeConsoleInfo, 0, len(currentMtnNodes)+len(currentRvrNodes)+len(currentPdsNodes))
 	heartBeatPayload := nodeConsoleInfoHeartBeat{CurrNodes: currNodes, PodLocation: podLocData.Xname}
 
 	// construct the NodeConsoleInfo due to marshalling issues on the console-data side.
-	for _, ni := range currentRvrNodes {
-		consoleDataNodeInfo := NodeConsoleInfo{
-			NodeName:        ni.NodeName,
-			BmcName:         ni.BmcName,
-			BmcFqdn:         ni.BmcFqdn,
-			Class:           ni.Class,
-			NID:             ni.NID,
-			Role:            ni.Role,
-			NodeConsoleName: "",
+	allNodes := [3](*map[string]*nodeConsoleInfo){&currentRvrNodes, &currentPdsNodes, &currentMtnNodes}
+	for _, ar := range allNodes {
+		for _, ni := range *ar {
+			consoleDataNodeInfo := NodeConsoleInfo{
+				NodeName:        ni.NodeName,
+				BmcName:         ni.BmcName,
+				BmcFqdn:         ni.BmcFqdn,
+				Class:           ni.Class,
+				NID:             ni.NID,
+				Role:            ni.Role,
+				NodeConsoleName: "",
+			}
+			heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
 		}
-		heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
 	}
-	for _, ni := range currentMtnNodes {
-		consoleDataNodeInfo := NodeConsoleInfo{
-			NodeName:        ni.NodeName,
-			BmcName:         ni.BmcName,
-			BmcFqdn:         ni.BmcFqdn,
-			Class:           ni.Class,
-			NID:             ni.NID,
-			Role:            ni.Role,
-			NodeConsoleName: "",
-		}
-		heartBeatPayload.CurrNodes = append(heartBeatPayload.CurrNodes, consoleDataNodeInfo)
-	}
-	log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
+
+	//log.Printf("heartBeatPayload: %+v\n", heartBeatPayload)
 	data, err := json.Marshal(heartBeatPayload)
 	if err != nil {
 		log.Printf("Error marshalling data for add nodes:%s", err)

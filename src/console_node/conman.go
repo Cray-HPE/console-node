@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2023 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2024 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -56,17 +56,11 @@ func configConman(forceConfigUpdate bool) bool {
 	updateConfigFile(forceConfigUpdate)
 
 	// set up a thread to add log output to the aggregation file
-	for nn := range currentRvrNodes {
-		// make sure the node is being aggregated - no-op if already being done
-		aggregateFile(nn)
-	}
-
-	// keep track of an array of new mountain nodes to check creds
-	var newMtnNodes []nodeConsoleInfo = nil
-	for nn, ni := range currentMtnNodes {
-		// keep track of newly added mountain nodes
-		if aggregateFile(nn) {
-			newMtnNodes = append(newMtnNodes, *ni)
+	allNodes := [3](*map[string]*nodeConsoleInfo){&currentRvrNodes, &currentPdsNodes, &currentMtnNodes}
+	for _, ar := range allNodes {
+		for nn := range *ar {
+			// make sure the node is being aggregated - no-op if already being done
+			aggregateFile(nn)
 		}
 	}
 
@@ -77,7 +71,7 @@ func configConman(forceConfigUpdate bool) bool {
 	ensureMountainConsoleKeysPresent()
 
 	// return if there are any nodes
-	return (len(currentMtnNodes) + len(currentRvrNodes)) > 0
+	return (len(currentMtnNodes) + len(currentRvrNodes) + len(currentPdsNodes)) > 0
 }
 
 // Loop that starts / restarts conmand process
@@ -279,9 +273,12 @@ func updateConfigFile(forceUpdate bool) {
 		log.Printf("Unable to copy base file into config: %s", err)
 	}
 
-	// collect the creds for the river endpoints
+	// collect the creds for the river and paradise endpoints
 	var rvrXNames []string = nil
 	for _, v := range currentRvrNodes {
+		rvrXNames = append(rvrXNames, v.BmcName)
+	}
+	for _, v := range currentPdsNodes {
 		rvrXNames = append(rvrXNames, v.BmcName)
 	}
 
@@ -296,7 +293,7 @@ func updateConfigFile(forceUpdate bool) {
 		// connect using ipmi
 		creds, ok := passwords[nodeCi.BmcName]
 		if !ok {
-			log.Printf("No record returned for %s", nodeCi.BmcName)
+			log.Printf("No creds record returned for %s", nodeCi.BmcName)
 		}
 		log.Printf("console name=\"%s\" dev=\"ipmi:%s\" ipmiopts=\"U:%s,P:REDACTED,W:solpayloadsize\"\n",
 			nodeCi.NodeName,
@@ -318,13 +315,40 @@ func updateConfigFile(forceUpdate bool) {
 
 	}
 
+	// Add Paradise endpoints to the config file to be accessed by ssh, but with passwords
+	for _, nodeCi := range currentPdsNodes {
+		// connect using ipmi
+		creds, ok := passwords[nodeCi.BmcName]
+		if !ok {
+			log.Printf("No creds record returned for %s", nodeCi.BmcName)
+		}
+		log.Printf("console name=\"%s\" dev=\"/usr/bin/ssh-pwd-console %s %s REDACTED\"\n",
+			nodeCi.NodeName,
+			nodeCi.BmcFqdn,
+			creds.Username)
+		// write the line to the config file
+		output := fmt.Sprintf("console name=\"%s\" dev=\"/usr/bin/ssh-pwd-console %s %s %s\"\n",
+			nodeCi.NodeName,
+			nodeCi.BmcFqdn,
+			creds.Username,
+			creds.Password)
+
+		// write the output line if there is anything present
+		if _, err = cf.WriteString(output); err != nil {
+			// log the error then panic
+			// TODO - maybe a little harsh to kill the entire process here?
+			log.Panic(err)
+		}
+
+	}
+
 	// Add Mountain endpoints to the config file
 	for _, nodeCi := range currentMtnNodes {
-		log.Printf("console name=\"%s\" dev=\"/usr/bin/ssh-console %s\"\n",
+		log.Printf("console name=\"%s\" dev=\"/usr/bin/ssh-key-console %s\"\n",
 			nodeCi.NodeName,
 			nodeCi.NodeName)
 		// write the line to the config file
-		output := fmt.Sprintf("console name=\"%s\" dev=\"/usr/bin/ssh-console %s\"\n",
+		output := fmt.Sprintf("console name=\"%s\" dev=\"/usr/bin/ssh-key-console %s\"\n",
 			nodeCi.NodeName,
 			nodeCi.NodeName)
 

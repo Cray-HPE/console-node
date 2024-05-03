@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2023 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2023-2024 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -81,27 +81,31 @@ func doMonitor() {
 // function to check if the passwords have changed since conman was configured
 func checkIfRiverPasswordsChanged() bool {
 	if previousPasswords == nil {
-		// this shouldn't happen due to the order of initilization, but just to be safe we skip this case.
+		// this shouldn't happen due to the order of initialization, but just to be safe we skip this case.
 		return false
 	}
 
 	currNodesMutex.Lock()
 	defer currNodesMutex.Unlock()
 
-	var rvrXNames []string = nil
-	for _, nodeCi := range currentRvrNodes {
-		rvrXNames = append(rvrXNames, nodeCi.BmcName)
+	var xnames []string = nil
+	allNodes := [2](*map[string]*nodeConsoleInfo){&currentRvrNodes, &currentPdsNodes}
+	for _, ar := range allNodes {
+		for _, nodeCi := range *ar {
+			xnames = append(xnames, nodeCi.BmcName)
+		}
 	}
-	// don't retry here so we don't block heartbeats with the mutex.  we can check again the next pass
-	currentPasswords := getPasswords(rvrXNames)
 
-	for _, nodeCi := range currentRvrNodes {
-		currentCreds, ok := currentPasswords[nodeCi.BmcName]
+	// don't retry here so we don't block heartbeats with the mutex.  we can check again the next pass
+	currentPasswords := getPasswords(xnames)
+
+	for _, xname := range xnames {
+		currentCreds, ok := currentPasswords[xname]
 		if !ok {
-			log.Printf("Missing credentials detected for %s while checking for credential changes", nodeCi.BmcName)
+			log.Printf("Missing credentials detected for %s while checking for credential changes", xname)
 			continue
 		}
-		previousCreds, _ := previousPasswords[nodeCi.BmcName]
+		previousCreds, _ := previousPasswords[xname]
 		if (currentCreds.Username != previousCreds.Username) || (currentCreds.Password != previousCreds.Password) {
 			log.Printf("Change detected in the river passwords.  Conman will be reconfigured.")
 			return true

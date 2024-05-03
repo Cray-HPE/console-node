@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2022 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2022, 2024 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -68,8 +68,8 @@ func doHealth(w http.ResponseWriter, r *http.Request) {
 
 	var stats HealthResponse
 
-	// NOTE: just dummy it out now
-	stats.NumMtnConnected = fmt.Sprintf("%d", len(currentMtnNodes))
+	// NOTE: Paradise nodes are counted as Mountain nodes due to needing to run through an expect script
+	stats.NumMtnConnected = fmt.Sprintf("%d", len(currentMtnNodes)+len(currentPdsNodes))
 	stats.NumRvrConnected = fmt.Sprintf("%d", len(currentRvrNodes))
 	stats.TargetNumMtn = fmt.Sprintf("%d", targetMtnNodes)
 	stats.TargetNumRvr = fmt.Sprintf("%d", targetRvrNodes)
@@ -79,7 +79,6 @@ func doHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
-	return
 }
 
 // Basic liveness probe
@@ -98,7 +97,6 @@ func doLiveness(w http.ResponseWriter, r *http.Request) {
 
 	// return simple StatusOK response to indicate server is alive
 	w.WriteHeader(http.StatusNoContent)
-	return
 }
 
 // Basic readiness probe
@@ -117,5 +115,4 @@ func doReadiness(w http.ResponseWriter, r *http.Request) {
 
 	// return simple StatusOK response to indicate server is alive
 	w.WriteHeader(http.StatusNoContent)
-	return
 }
