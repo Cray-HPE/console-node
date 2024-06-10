@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dependencies
+- Bump `golang.org/x/crypto` from 0.0.0-20210616213533-5ff15b29337e to 0.17.0 ([#88](https://github.com/Cray-HPE/console-node/pull/88))
+
 ## [2.2.0] - 2024-05-03
 ### Added
 - CASMCMS-8899 - add support for Paradise (xd224) nodes.
