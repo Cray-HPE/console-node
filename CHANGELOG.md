@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2024-06-10
+### Changed
+- CASMCMS-9056 - update base image to sles15-sp5
+
 ## [2.2.1] - 2024-06-10
 ### Dependencies
 - CASMCMS-9027: Bump `golang.org/x/crypto` from 0.0.0-20210616213533-5ff15b29337e to 0.17.0 ([#88](https://github.com/Cray-HPE/console-node/pull/88))

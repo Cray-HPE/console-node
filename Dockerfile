@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright 2020-2022 Hewlett Packard Enterprise Development LP
+# (C) Copyright 2020-2022, 2024 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -23,10 +23,13 @@
 #
 # Dockerfile for cray-console-node service
 
-# Build will be where we build the go binary
-FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.4 as build
+# NOTE: to update to SP6, it needs to update to a newer version of 'Go', which
+#  will take a bit of work.
 
-ARG SP=4
+# Build will be where we build the go binary
+FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.5 as build
+
+ARG SP=5
 ARG ARCH=x86_64
 
 # Do zypper operations using a wrapper script, to isolate the necessary artifactory authentication
@@ -53,22 +56,22 @@ RUN set -ex \
 # NOTE:
 #  We need to switch to the below image, but for now it does not include the 'nobody' user
 #  and we need to figure out why/how that user was removed from the image.
-#FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.4 as base
+#FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.5 as base
 #ARG SLES_MIRROR=https://slemaster.us.cray.com/SUSE
 #ARG ARCH=x86_64
 #RUN set -eux \
 #    && zypper --non-interactive rr --all \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Basesystem/15-SP4/${ARCH}/product/ sles15sp4-Module-Basesystem-product \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Basesystem/15-SP4/${ARCH}/update/ sles15sp4-Module-Basesystem-update \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-HPC/15-SP4/${ARCH}/product/ sles15sp4-Module-HPC-product \
-#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-HPC/15-SP4/${ARCH}/update/ sles15sp4-Module-HPC-update \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-Basesystem/15-SP5/${ARCH}/product/ sles15sp5-Module-Basesystem-product \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-Basesystem/15-SP5/${ARCH}/update/ sles15sp5-Module-Basesystem-update \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Products/SLE-Module-HPC/15-SP5/${ARCH}/product/ sles15sp5-Module-HPC-product \
+#    && zypper --non-interactive ar ${SLES_MIRROR}/Updates/SLE-Module-HPC/15-SP5/${ARCH}/update/ sles15sp5-Module-HPC-update \
 #    && zypper --non-interactive install conman less vi openssh jq curl tar
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp4:sles15sp4 as base
+FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp5:sles15sp5 as base
 
-ARG SP=4
+ARG SP=5
 ARG ARCH=x86_64
 
 # Do zypper operations using a wrapper script, to isolate the necessary artifactory authentication
