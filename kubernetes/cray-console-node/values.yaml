@@ -99,8 +99,8 @@ cray-service:
     log-forwarding:
       name: log-forwarding
       image:
-        repository: alpine
-        tag: latest
+        repository: artifactory.algol60.net/csm-docker/stable/docker.io/library/alpine
+        tag: 3
       args: [/bin/sh, -c, 'tail -n 0 -F /tmp/consoleAgg/consoleAgg-${MY_POD_NAME}.log']
       env:
       - name: MY_POD_NAME
@@ -151,6 +151,6 @@ cray-service:
 
 alpine:
   image:
-    repository: alpine
-    tag: latest
+    repository: artifactory.algol60.net/csm-docker/stable/docker.io/library/alpine
+    tag: 3
     pullPolicy: IfNotPresent
