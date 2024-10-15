@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.2] - 2024-10-23
+### Added
+- CASMCMS-8681 - add inotify-tools to the base image.
+
+## [2.3.1]
+This is an invalid release - do not use.
+
 ## [2.3.0] - 2024-06-10
 ### Changed
 - CASMCMS-9056 - update base image to sles15-sp5
