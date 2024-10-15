@@ -79,7 +79,7 @@ COPY zypper-docker-build.sh /
 # The above script calls the following script, so we need to copy it as well
 COPY zypper-refresh-patch-clean.sh /
 RUN --mount=type=secret,id=ARTIFACTORY_READONLY_USER --mount=type=secret,id=ARTIFACTORY_READONLY_TOKEN \
-    ./zypper-docker-build.sh conman less vi openssh jq curl tar procps --remove polkit && \
+    ./zypper-docker-build.sh conman less vi openssh jq curl tar procps inotify-tools --remove polkit && \
     rm /zypper-docker-build.sh /zypper-refresh-patch-clean.sh
 
 # Copy in the needed files
