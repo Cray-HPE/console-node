@@ -29,6 +29,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -82,6 +83,12 @@ func postURL(URL string, requestBody []byte, requestHeaders map[string]string) (
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		// Always drain and close response bodies, just in case
+		if resp != nil && resp.Body != nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+
 		// handle error
 		log.Printf("postURL Error on request to %s: %s", URL, err)
 		return nil, -1, err
@@ -117,10 +124,17 @@ func getURL(URL string, requestHeaders map[string]string) ([]byte, int, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		// Always drain and close response bodies, just in case
+		if resp != nil && resp.Body != nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+
 		// handle error
 		log.Printf("getURL Error on request to %s: %s", URL, err)
 		return nil, -1, err
 	}
+	defer resp.Body.Close()
 	//log.Printf("getURL Response Status code: %d\n", resp.StatusCode)
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
