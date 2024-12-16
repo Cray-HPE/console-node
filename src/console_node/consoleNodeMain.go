@@ -55,6 +55,9 @@ var httpListen string = ":26776"
 // global to signify service is shutting down
 var inShutdown bool = false
 
+// global pointer to the active OperatorService
+var opService OperatorService = nil
+
 // identify what the name of this pod is
 func setPodName() {
 	// The pod name is set as an env variable by the k8s system on pod
@@ -142,10 +145,10 @@ func main() {
 	setPodName()
 
 	// Construct services
-	operatorService := NewOperatorService()
+	opService = NewOperatorService()
 
 	// Find pod location in k8s, this must block and retry
-	setPodLocation(operatorService)
+	setPodLocation(opService)
 
 	// start the aggregation log
 	respinAggLog()
