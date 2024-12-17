@@ -62,8 +62,7 @@ func checkForChanges() {
 
 	//restart conman if necessary
 	if restartConman {
-		//signalConmanTERM()
-		signalConmanHUP()
+		signalConmanTERM()
 	}
 }
 

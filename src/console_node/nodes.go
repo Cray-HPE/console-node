@@ -257,8 +257,7 @@ func doGetNewNodes() {
 	// Restart the conman process if needed
 	if changed {
 		// trigger a re-configuration and restart of conman
-		//signalConmanTERM()
-		signalConmanHUP()
+		signalConmanTERM()
 
 		// rebuild the log rotation configuration file
 		updateLogRotateConf()

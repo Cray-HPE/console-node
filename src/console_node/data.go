@@ -195,8 +195,7 @@ func sendSingleHeartbeat() {
 			}
 
 			// signal conman to restart/reconfigure
-			//signalConmanTERM()
-			signalConmanHUP()
+			signalConmanTERM()
 		}
 	}
 }
