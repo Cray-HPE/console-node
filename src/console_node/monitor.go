@@ -76,6 +76,7 @@ func checkLogFiles() {
 	nodes := getCurrNodeXnames()
 
 	log.Printf("#####")
+	log.Printf("  input file: %v", nodes)
 	log.Printf("Checking file permissions:")
 	// check the write permissions of the log files
 	for nn := range nodes {
