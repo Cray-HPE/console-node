@@ -75,24 +75,18 @@ func checkLogFiles() {
 	// gather the names of the current nodes
 	nodes := getCurrNodeXnames()
 
-	log.Printf("#####")
-	log.Printf("  input file: %v", nodes)
-	log.Printf("Checking file permissions:")
 	// check the write permissions of the log files
 	for _, nn := range nodes {
 		filename := fmt.Sprintf("/var/log/conman/console.%s", nn)
 		log.Printf(" File: %s", filename)
 		fs, err := os.Stat(filename)
 		if err != nil {
-			log.Printf("     Unable to get file stats")
 			continue
 		}
 		if fs.Mode()&0600 == 0 {
-			log.Printf("     File not user read/write - changing permissions")
+			log.Printf("File %s not user read/write - changing permissions", nn)
 			newMod := fs.Mode() | 0600
 			os.Chmod(filename, newMod)
-		} else {
-			log.Printf("     File is already user read/write")
 		}
 	}
 }
