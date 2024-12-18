@@ -29,6 +29,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -60,9 +61,38 @@ func checkForChanges() {
 		restartConman = true
 	}
 
+	// make sure that the log files still have the correct permissions
+	checkLogFiles()
+
 	//restart conman if necessary
 	if restartConman {
 		signalConmanTERM()
+	}
+}
+
+// function to check the permissions on the log files
+func checkLogFiles() {
+	// gather the names of the current nodes
+	nodes := getCurrNodeXnames()
+
+	log.Printf("#####")
+	log.Printf("Checking file permissions:")
+	// check the write permissions of the log files
+	for nn := range nodes {
+		filename := fmt.Sprintf("/var/log/conman/console.%s", nn)
+		log.Printf(" File: %s", filename)
+		fs, err := os.Stat(filename)
+		if err != nil {
+			log.Printf("     Unable to get file stats")
+			continue
+		}
+		if fs.Mode()&0600 == 0 {
+			log.Printf("     File not user read/write - changing permissions")
+			newMod := fs.Mode() | 0600
+			os.Chmod(filename, newMod)
+		} else {
+			log.Printf("     File is already user read/write")
+		}
 	}
 }
 

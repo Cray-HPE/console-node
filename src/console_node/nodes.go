@@ -94,6 +94,27 @@ var newNodeLookupSec int = 30
 // a shared file system so console-node pods can read what is set here
 const targetNodeFile string = "/var/log/console/TargetNodes.txt"
 
+// function to safely get the current node xnames
+func getCurrNodeXnames() []string {
+	// put a lock on the current nodes while looking for new ones
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// gather the names of all the current nodes being watched
+	var retVal []string
+	for nn := range currentMtnNodes {
+		retVal = append(retVal, nn)
+	}
+	for nn := range currentRvrNodes {
+		retVal = append(retVal, nn)
+	}
+	for nn := range currentPdsNodes {
+		retVal = append(retVal, nn)
+	}
+
+	return retVal
+}
+
 // small helper function to insure correct number of nodes asked for
 func pinNumNodes(numAsk, numMax int) int {
 	// insure the input number ends in range [1,numMax]
