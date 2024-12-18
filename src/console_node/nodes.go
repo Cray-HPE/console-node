@@ -102,17 +102,17 @@ func getCurrNodeXnames() []string {
 
 	// gather the names of all the current nodes being watched
 	var retVal []string
-	for nn, _ := range currentMtnNodes {
-		log.Printf("Found mtn node: %s", nn)
-		retVal = append(retVal, nn)
+	for key, item := range currentMtnNodes {
+		log.Printf("Found mtn node: %s, %v", key, item)
+		retVal = append(retVal, key)
 	}
-	for nn, _ := range currentRvrNodes {
-		log.Printf("Found rvr node: %s", nn)
-		retVal = append(retVal, nn)
+	for key, item := range currentRvrNodes {
+		log.Printf("Found rvr node: %s, %v", key, item)
+		retVal = append(retVal, key)
 	}
-	for nn, _ := range currentPdsNodes {
-		log.Printf("Found pds node: %s", nn)
-		retVal = append(retVal, nn)
+	for key, item := range currentPdsNodes {
+		log.Printf("Found pds node: %s, %v", key, item)
+		retVal = append(retVal, key)
 	}
 
 	return retVal
