@@ -79,7 +79,7 @@ func checkLogFiles() {
 	log.Printf("  input file: %v", nodes)
 	log.Printf("Checking file permissions:")
 	// check the write permissions of the log files
-	for nn := range nodes {
+	for _, nn := range nodes {
 		filename := fmt.Sprintf("/var/log/conman/console.%s", nn)
 		log.Printf(" File: %s", filename)
 		fs, err := os.Stat(filename)
