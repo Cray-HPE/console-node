@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2024-11-22
+### Fixed
+- CASMTRIAGE-7594 - clean up resilience, rebalance nodes, and accept other worker nodes
+- CASMCMS-9126 - watch permissions on log files to insure they can be written to
+
 ## [2.6.0] - 2024-11-22
 ### Fixed
 - CASMCMS-9217: Close response bodies for GET requests; drain and close response bodies on error path, if needed

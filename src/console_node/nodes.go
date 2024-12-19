@@ -80,6 +80,7 @@ var currentRvrNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleIn
 var currentPdsNodes map[string]*nodeConsoleInfo = make(map[string]*nodeConsoleInfo) // [xname,*consoleInfo]
 
 // Number of nodes this pod should be watching
+// NOTE: deprecated, prefer to call OperatorService.getCurrentTargets()
 var targetRvrNodes int = -1
 var targetMtnNodes int = -1
 
@@ -94,6 +95,27 @@ var newNodeLookupSec int = 30
 // a shared file system so console-node pods can read what is set here
 const targetNodeFile string = "/var/log/console/TargetNodes.txt"
 
+// function to safely get the current node xnames
+func getCurrNodeXnames() []string {
+	// put a lock on the current nodes while looking for new ones
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// gather the names of all the current nodes being watched
+	var retVal []string
+	for key := range currentMtnNodes {
+		retVal = append(retVal, key)
+	}
+	for key := range currentRvrNodes {
+		retVal = append(retVal, key)
+	}
+	for key := range currentPdsNodes {
+		retVal = append(retVal, key)
+	}
+
+	return retVal
+}
+
 // small helper function to insure correct number of nodes asked for
 func pinNumNodes(numAsk, numMax int) int {
 	// insure the input number ends in range [0,numMax]
@@ -107,7 +129,86 @@ func pinNumNodes(numAsk, numMax int) int {
 	return numAsk
 }
 
+// local max function for ints
+func locMax(a, b int) int {
+	// NOTE: this may be removed in favor of the standard 'max' function when we upgrade past 1.18
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// helper function to calculate how many nodes to ask for
+func calcChangeInNodes() (deltaMtn, deltaRvr int) {
+	// The change to the number of nodes being monitored - positive
+	// means to acquire more, negative to release some.
+	deltaMtn = 0
+	deltaRvr = 0
+
+	// Update the target number of nodes being monitored
+	updateNodesPerPod()
+
+	// NOTE: the 'target' values should be the total number of nodes divided
+	//  by the number of console-node pods. Where this gets tricky is if
+	//  one or more console-node pods has failed. Then we want to take over
+	//  the unmonitored nodes until that pod is back up, then give them back.
+	//  We also always want to have extra space to allow a node to shift so
+	//  a console-node pod isn't monitoring the worker it is running on.
+
+	// Get the current number of nodes being monitored here
+	currNumRvr := len(currentRvrNodes)
+	currNumMtn := len(currentMtnNodes)
+
+	// get the number of currently active nodes from the data service
+	numPods, errNumPods := getNumActiveNodePods()
+	if errNumPods != nil {
+		log.Print("Unable to find current number of active nodes, defaulting to 1")
+		numPods = 1
+	}
+
+	// get the current targets from the operator service, default to something
+	// reasonable if we can't contact the operator service
+	currTargets, errCurrTargets := opService.getCurrentTargets()
+	if errCurrTargets != nil {
+		log.Print("Unable to find current targets from operator service - defaulting to something reasonable")
+	}
+
+	// Figure out how to adjust the number of nodes managed by this pod
+	if errCurrTargets == nil && errNumPods == nil {
+		// we have good current information from data and operator services, so use it
+		// Try to balance the number of nodes with the total of node pods
+		safeNumPods := locMax(numPods, 1)
+		idealNumRvr := (currTargets.TotalRvrNodes / safeNumPods) + 1
+		idealNumMtn := (currTargets.TotalMtnNodes / safeNumPods) + 1
+
+		// if we are under the ideal number, try to match
+		// if we are more than 10% over the ideal, give some back
+		// NOTE: there is a gap where we don't change the number to try and avoid bouncing
+		if (currNumRvr < idealNumRvr) || (float64(currNumRvr) > (1.1 * float64(idealNumRvr))) {
+			// simple difference from ideal - could be positive or negative
+			deltaRvr = idealNumRvr - currNumRvr
+		}
+		if (currNumMtn < idealNumMtn) || (float64(currNumMtn) > (1.1 * float64(idealNumMtn))) {
+			// simple difference from ideal - could be positive or negative
+			deltaMtn = idealNumMtn - currNumMtn
+		}
+	} else {
+		log.Printf("calcChangeInNodes: unable to do detailed calculation")
+		// we have having problems contacting the data and operator services, so guess
+		deltaRvr = pinNumNodes(targetRvrNodes-currNumRvr, maxAcquireRvr)
+		deltaMtn = pinNumNodes(targetMtnNodes-currNumMtn, maxAcquireMtn)
+	}
+
+	return deltaMtn, deltaRvr
+}
+
 func doGetNewNodes() {
+	// if the pod is shutting down, don't touch the current nodes
+	if inShutdown {
+		log.Print("In pod shutdown, skipping doGetNewNodes")
+		return
+	}
+
 	// put a lock on the current nodes while looking for new ones
 	currNodesMutex.Lock()
 	defer currNodesMutex.Unlock()
@@ -115,46 +216,49 @@ func doGetNewNodes() {
 	// keep track of if we need to redo the configuration
 	changed := false
 
-	// Update the target number of nodes being monitored
-	updateNodesPerPod()
+	// Figure out how to adjust the number of nodes being monitored
+	deltaMtn, deltaRvr := calcChangeInNodes()
 
-	// Check if we need to gather more nodes - don't take more
-	//  if the service is shutting down
-	if !inShutdown && (len(currentRvrNodes) < targetRvrNodes || len(currentMtnNodes) < targetMtnNodes) {
-		// figure out how many of each to ask for
-		numRvr := pinNumNodes(targetRvrNodes-len(currentRvrNodes), maxAcquireRvr)
-		numMtn := pinNumNodes(targetMtnNodes-len(currentMtnNodes), maxAcquireMtn)
+	// Make sure we can always take one river node if we need to move a worker node
+	if deltaRvr == 0 {
+		deltaRvr = 1
+	}
 
-		// attempt to acquire more nodes
-		if numRvr > 0 || numMtn > 0 {
-			// NOTE: this should be the ONLY place where the maps of
-			//  current nodes is updated!!!
-			// NOTE: paradise nodes are included in mountain count
-			newNodes := acquireNewNodes(numMtn, numRvr, podLocData)
-			// process the new nodes
-			for i, node := range newNodes {
-				//log.Printf("  Processing node: %s", node.String())
-				if node.isRiver() {
-					currentRvrNodes[node.NodeName] = &newNodes[i]
-					changed = true
-				} else if node.isMountain() {
-					currentMtnNodes[node.NodeName] = &newNodes[i]
-					changed = true
-				} else if node.isParadise() {
-					currentPdsNodes[node.NodeName] = &newNodes[i]
-					changed = true
-				}
+	log.Printf("doGetNewNodes - deltaRvr: %d, deltaMtn: %d", deltaRvr, deltaMtn)
+
+	// From the change numbers, pull out how many to add (if any)
+	// NOTE: paradise nodes are included in mountain count
+	numAcqRvr := pinNumNodes(deltaRvr, maxAcquireRvr)
+	numAcqMtn := pinNumNodes(deltaMtn, maxAcquireMtn)
+
+	if numAcqRvr > 0 || numAcqMtn > 0 {
+		newNodes := acquireNewNodes(numAcqMtn, numAcqRvr, podLocData)
+		// process the new nodes
+		// NOTE: this should be the ONLY place where the maps of
+		//  current nodes is updated!!!
+		newRvr := 0
+		newMtn := 0
+		newPds := 0
+		for i, node := range newNodes {
+			if node.isRiver() {
+				currentRvrNodes[node.NodeName] = &newNodes[i]
+				changed = true
+				newRvr++
+			} else if node.isMountain() {
+				currentMtnNodes[node.NodeName] = &newNodes[i]
+				changed = true
+				newMtn++
+			} else if node.isParadise() {
+				currentPdsNodes[node.NodeName] = &newNodes[i]
+				changed = true
+				newPds++
 			}
-		} else {
-			log.Printf("Nothing to acquire after pin...")
 		}
-	} else {
-		log.Printf("Skipping acquire - at capacity. CurRvr:%d, TarRvr:%d, CurMtn:%d, TarMtn:%d",
-			len(currentRvrNodes), targetRvrNodes, len(currentMtnNodes)+len(currentPdsNodes), targetMtnNodes)
+		log.Printf(" Added River:%d, Mountain:%d, Paradise:%d", newRvr, newMtn, newPds)
 	}
 
 	// See if we have too many nodes
-	if rebalanceNodes() {
+	if rebalanceNodes(deltaRvr, deltaMtn) {
 		changed = true
 	}
 
@@ -182,68 +286,69 @@ func watchForNodes() {
 }
 
 // If we have too many nodes, release some
-func rebalanceNodes() bool {
+func rebalanceNodes(deltaRvr, deltaMtn int) bool {
 	// NOTE: this function just modifies currentNodes lists and stops
 	//  tailing operation.  The configuration files will be triggered to be
 	//  regenerated outside of this operation.
 
 	// NOTE: in doGetNewNodes thread
 
-	// see if we need to release any nodes
-	if len(currentRvrNodes) <= targetRvrNodes && len(currentMtnNodes) <= targetMtnNodes {
-		log.Printf("Current number of nodes within target range - no rebalance needed")
-		return false
-	}
-
 	// gather nodes to give back
 	var rn []nodeConsoleInfo
 
 	// release river nodes until match target number
 	// NOTE: map iteration is random
-	for key, ni := range currentRvrNodes {
-		if len(currentRvrNodes) > targetRvrNodes {
-			// remove another one
-			rn = append(rn, *ni)
-			delete(currentRvrNodes, key)
+	if deltaRvr < 0 {
+		endNumRvr := len(currentRvrNodes) + deltaRvr
+		for key, ni := range currentRvrNodes {
+			if len(currentRvrNodes) > endNumRvr {
+				// remove another one
+				rn = append(rn, *ni)
+				delete(currentRvrNodes, key)
 
-			// stop tailing this file
-			stopTailing(key)
-		} else {
-			// done so break
-			break
+				// stop tailing this file
+				stopTailing(key)
+			} else {
+				// done so break
+				break
+			}
 		}
 	}
 
 	// release mtn nodes until match target number
 	// NOTE: paradise nodes count towards mountain limits, remove from both
-	for len(currentMtnNodes)+len(currentPdsNodes) > targetMtnNodes {
-		// balance removal so take from whichever pool is larger, one at a time
-		targetPool := &currentPdsNodes
-		if len(currentMtnNodes) > len(currentPdsNodes) {
-			targetPool = &currentMtnNodes
-		}
+	if deltaMtn < 0 {
+		endNumMtn := len(currentMtnNodes) + len(currentPdsNodes) + deltaMtn
+		for len(currentMtnNodes)+len(currentPdsNodes) > endNumMtn {
+			// balance removal so take from whichever pool is larger, one at a time
+			targetPool := &currentPdsNodes
+			if len(currentMtnNodes) > len(currentPdsNodes) {
+				targetPool = &currentMtnNodes
+			}
 
-		// make sure we didn't hit some weird condition where both lists are empty
-		if len(*targetPool) == 0 {
-			break
-		}
+			// make sure we didn't hit some weird condition where both lists are empty
+			if len(*targetPool) == 0 {
+				break
+			}
 
-		// remove a node from the target pool
-		// NOTE: map iteration is random - use it to grab a random node to remove
-		for key, ni := range *targetPool {
-			// remove node
-			rn = append(rn, *ni)
-			delete(*targetPool, key)
+			// remove a node from the target pool
+			// NOTE: map iteration is random - use it to grab a random node to remove
+			for key, ni := range *targetPool {
+				// remove node
+				rn = append(rn, *ni)
+				delete(*targetPool, key)
 
-			// stop tailing this file
-			stopTailing(key)
+				// stop tailing this file
+				stopTailing(key)
 
-			// only want to remove one at a time
-			break
+				// only want to remove one at a time
+				break
+			}
 		}
 	}
 
 	if len(rn) > 0 {
+		log.Printf("Rebalance operation is releasing %d nodes", len(rn))
 		// notify console-data that we are no longer tracking these nodes
 		releaseNodes(rn)
 
@@ -281,13 +386,12 @@ func releaseNode(xname string) bool {
 
 // Update the number of target consoles per node pod
 func updateNodesPerPod() {
-	// NOTE: for the time being we will just put this information
-	//  into a simple text file on a pvc shared with console-operator
-	//  and console-node pods.  The console-operator will write changes
-	//  and the console-node pods will read periodically for changes.
-	//  This mechanism can be made more elegant later if needed but it
-	//  needs to be something that can be picked up by all console-node
-	//  pods without restarting them.
+
+	// NOTE: this is in the process of being deprecated - now the number of
+	//  targeted nodes should be retrieved through the console-operator
+	//  http api via the OperatorService.getCurrentTargets() function call.
+	//  Ths is being left in for a backup mechanism in case the http function
+	//  fails.
 
 	// NOTE: in doGetNewNodes thread
 
