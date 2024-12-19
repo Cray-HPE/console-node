@@ -62,6 +62,36 @@ type NodeConsoleInfo struct {
 	NodeConsoleName string `json:"nodeconsolename"` // the pod console
 }
 
+// Struct to hold information about currently active node pods
+type NodePodInfo struct {
+	NumActivePods int `json:"numactivepods"`
+}
+
+// Query the console-data pod to get the number of currently active console-node pods
+func getNumActiveNodePods() (int, error) {
+	retVal := 1
+	// make the call to console-data
+	url := fmt.Sprintf("%s/activepods", dataAddrBase)
+	rb, _, err := getURL(url, nil)
+	if err != nil {
+		log.Printf("Error in console-data active pods query: %s", err)
+		return retVal, err
+	}
+
+	// process the return
+	var numPodsInfo NodePodInfo
+	if rb != nil {
+		// should be an array of nodeConsoleInfo structs
+		err := json.Unmarshal(rb, &numPodsInfo)
+		if err != nil {
+			log.Printf("Error unmarshalling active pods return data: %s", err)
+			return retVal, err
+		}
+		retVal = numPodsInfo.NumActivePods
+	}
+	return retVal, nil
+}
+
 // Function to acquire new consoles to monitor
 func acquireNewNodes(numMtn, numRvr int, podLocation *PodLocationDataResponse) []nodeConsoleInfo {
 	// NOTE: in doGetNewNodes thread

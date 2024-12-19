@@ -36,6 +36,7 @@ import (
 type OperatorService interface {
 	getPodLocation(podId string) (podLoc *PodLocationDataResponse, err error)
 	OperatorRetryInterval() time.Duration
+	getCurrentTargets() (*CurrentTargets, error)
 }
 
 type OperatorManager struct {
@@ -53,6 +54,14 @@ func NewOperatorService() *OperatorManager {
 
 func (om OperatorManager) OperatorRetryInterval() time.Duration {
 	return om.operatorRetryInterval
+}
+
+type CurrentTargets struct {
+	TargetNumRvrNodes int `json:"targetnumrvrnodes"`
+	TargetNumMtnNodes int `json:"targetnummtnnodes"`
+	TotalRvrNodes     int `json:"totalrvrnodes"`
+	TotalMtnNodes     int `json:"totalmtnnodes"`
+	TargetNumNodePods int `json:"targetnumnodepods"`
 }
 
 type PodLocationDataResponse struct {
@@ -75,6 +84,33 @@ func (om OperatorManager) getPodLocation(podID string) (data *PodLocationDataRes
 	}
 
 	var resp = new(PodLocationDataResponse)
+	if rb != nil {
+		err := json.Unmarshal(rb, &resp)
+		if err != nil {
+			log.Printf("Error unmarshalling return data: %s\n", err)
+			return nil, err
+		}
+	}
+
+	return resp, nil
+}
+
+// Function to get the current target and node count information from console-operator
+func (om OperatorManager) getCurrentTargets() (*CurrentTargets, error) {
+	// make the http call
+	url := fmt.Sprintf("%s/currentTargets", om.operatorAddrBase)
+	rb, sc, err := getURL(url, nil)
+	if err != nil {
+		log.Printf("Error making GET to %s\n", url)
+		return nil, err
+	}
+
+	if sc != 200 && err == nil {
+		log.Printf("Failed to get current targets, sc=%d", sc)
+		return nil, errors.New("failed to get current targets")
+	}
+
+	var resp = new(CurrentTargets)
 	if rb != nil {
 		err := json.Unmarshal(rb, &resp)
 		if err != nil {
