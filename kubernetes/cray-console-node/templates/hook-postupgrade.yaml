@@ -1,7 +1,7 @@
 {{/*
 MIT License
 
-(C) Copyright 2022-2023 Hewlett Packard Enterprise Development LP
+(C) Copyright 2022-2023, 2025 Hewlett Packard Enterprise Development LP
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -38,7 +38,7 @@ spec:
       - name: hook1-container
         image: {{ .Values.alpine.image.repository }}:{{ .Values.alpine.image.tag }}
         imagePullPolicy: {{ .Values.alpine.image.pullPolicy }}
-        command: ['sh', '-c', 'mkdir -p /var/log/conman /var/log/conman.old /var/log/console && chown -Rv 65534:65534 /var/log && chmod -R 700 /var/log']
+        command: ['sh', '-c', 'mkdir -p /var/log/conman /var/log/conman.old /var/log/console && chown -Rv 65534:65534 /var/log && chmod -R 777 /var/log']
         volumeMounts:
           - mountPath: /var/log
             name: cray-console-logs
