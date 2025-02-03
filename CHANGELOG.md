@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Dependencies
-- Bump `golang.org/x/crypto` from 0.17.0 to 0.31.0 ([#110](https://github.com/Cray-HPE/console-node/pull/110))
+- CASMCMS-9266: Bump `golang.org/x/crypto` from 0.17.0 to 0.31.0 ([#110](https://github.com/Cray-HPE/console-node/pull/110))
 
 ## [2.7.0] - 2024-11-22
 ### Fixed
