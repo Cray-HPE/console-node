@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- CASMTRIAGE-7715 - fix file permissions for log directories as well as files
 
 ### Dependencies
 - CASMCMS-9266: Bump `golang.org/x/crypto` from 0.17.0 to 0.31.0 ([#110](https://github.com/Cray-HPE/console-node/pull/110))
