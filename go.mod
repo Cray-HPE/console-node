@@ -1,4 +1,4 @@
-// Copyright 2021 Hewlett Packard Enterprise Development LP
+// Copyright 2021-2025 Hewlett Packard Enterprise Development LP
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
 // copy of this software and associated documentation files (the "Software"),
@@ -29,7 +29,7 @@ require (
 	github.com/Cray-HPE/hms-securestorage v1.12.2
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/hpcloud/tail v1.0.0
-	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )

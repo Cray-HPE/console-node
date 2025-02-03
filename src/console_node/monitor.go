@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2023-2024 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2023-2025 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -70,23 +70,39 @@ func checkForChanges() {
 	}
 }
 
+// function to check a single file or directory
+func checkItemPermissions(itemName string, mode os.FileMode) {
+	fs, err := os.Stat(itemName)
+	if err != nil {
+		log.Printf("    Error getting file stats: %s", err.Error())
+		return
+	}
+
+	log.Printf("    File Mode: %s", fs.Mode().String())
+	if fs.Mode()&mode != mode {
+		log.Printf("    Log file %s not user read/write - changing permissions", itemName)
+		newMod := fs.Mode() | mode
+		os.Chmod(itemName, newMod)
+	}
+}
+
 // function to check the permissions on the log files
 func checkLogFiles() {
 	// gather the names of the current nodes
 	nodes := getCurrNodeXnames()
 
-	// check the write permissions of the log files
+	log.Printf("Checking log file permissions")
+
+	// Check the write permissions on the dirs
+	// NOTE - we still don't know what is changing them, but this changes them back
+	checkItemPermissions("/var/log/conman", 0777)
+	checkItemPermissions("/var/log/conman.old", 0777)
+	checkItemPermissions("/var/log/console", 0777)
+
+	// check the write permissions of the log files this node is monitoring
 	for _, nn := range nodes {
 		filename := fmt.Sprintf("/var/log/conman/console.%s", nn)
-		fs, err := os.Stat(filename)
-		if err != nil {
-			continue
-		}
-		if fs.Mode()&0600 == 0 {
-			log.Printf("Log file %s not user read/write - changing permissions", nn)
-			newMod := fs.Mode() | 0600
-			os.Chmod(filename, newMod)
-		}
+		checkItemPermissions(filename, 0666)
 	}
 }
 

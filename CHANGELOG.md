@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2025-02-03
+### Fixed
+- CASMTRIAGE-7715 - fix file permissions for log directories as well as files
+
+### Dependencies
+- CASMCMS-9266: Bump `golang.org/x/crypto` from 0.17.0 to 0.31.0 ([#110](https://github.com/Cray-HPE/console-node/pull/110))
+- Bump `golang.org/x/crypto` from 0.17.0 to 0.31.0 ([#110](https://github.com/Cray-HPE/console-node/pull/110))
+
 ## [2.7.0] - 2024-11-22
 ### Fixed
 - CASMTRIAGE-7594 - clean up resilience, rebalance nodes, and accept other worker nodes
