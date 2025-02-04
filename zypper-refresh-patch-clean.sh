@@ -49,6 +49,9 @@ set -x
 # Do a zypper refresh without -f, so we only refresh repos if needed
 zypper --non-interactive refresh
 
+zypper se -s gstreamer-plugins-base-lang || true
+rpm -qa | grep -E '^(gstreamer|webkit2gtk|libgstallocators|libgstapp|libgstaudio|libgstfft|libgstgl|libgstpbutils|libgstreamer|libgstriff|libgstrtp|libgstrtsp|libgstsdp|libgsttag|libgstvideo|libjavascriptcoregtk|libwebkit2gtk)' || true
+
 # Apply necessary patches in a while loop. This is done because
 # the zypper patch command returns 103 when it has successfully applied
 # a patch to itself, but it needs to be re-run in order to apply the remaining
