@@ -83,9 +83,9 @@ for MODULE in Basesystem Certifications Containers Desktop-Applications Developm
 do
     add_zypper_repos "Module-${MODULE}"
 done
-for PRODUCT in HA HPC SLED SLES SLES_SAP WE; do
-    add_zypper_repos "Product-${PRODUCT}"
-done
+#for PRODUCT in HA HPC SLED SLES SLES_SAP WE; do
+#    add_zypper_repos "Product-${PRODUCT}"
+#done
 zypper --non-interactive --gpg-auto-import-keys refresh
 if [[ ${#INSTALL_LIST[@]} -gt 0 ]]; then
     zypper --non-interactive in -f --no-confirm "${INSTALL_LIST[@]}"
