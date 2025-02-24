@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2023-2024 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2023-2025 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -33,29 +33,34 @@ import (
 	"time"
 )
 
+// OperatorService - interface for interacting with the console-operator service
 type OperatorService interface {
 	getPodLocation(podId string) (podLoc *PodLocationDataResponse, err error)
 	OperatorRetryInterval() time.Duration
 	getCurrentTargets() (*CurrentTargets, error)
 }
 
+// OperatorManager - struct for managing operator service interactions
 type OperatorManager struct {
 	operatorAddrBase      string
 	operatorRetryInterval time.Duration
 }
 
+// NewOperatorService creates a new instance of OperatorManager
 func NewOperatorService() *OperatorManager {
 	var operatorRetryInterval time.Duration = time.Duration(30 * float64(time.Second))
 	return &OperatorManager{
-		operatorAddrBase:      "http://cray-console-operator/console-operator/v1",
+		operatorAddrBase:      "http://cray-console-operator/console-operator",
 		operatorRetryInterval: operatorRetryInterval,
 	}
 }
 
+// OperatorRetryInterval returns the retry interval for the operator.
 func (om OperatorManager) OperatorRetryInterval() time.Duration {
 	return om.operatorRetryInterval
 }
 
+// CurrentTargets represents the current target and node count information.
 type CurrentTargets struct {
 	TargetNumRvrNodes int `json:"targetnumrvrnodes"`
 	TargetNumMtnNodes int `json:"targetnummtnnodes"`
@@ -64,6 +69,7 @@ type CurrentTargets struct {
 	TargetNumNodePods int `json:"targetnumnodepods"`
 }
 
+// PodLocationDataResponse represents the response data for pod location.
 type PodLocationDataResponse struct {
 	PodName string `json:"podname"`
 	Alias   string `json:"alias"`
@@ -73,13 +79,14 @@ type PodLocationDataResponse struct {
 func (om OperatorManager) getPodLocation(podID string) (data *PodLocationDataResponse, err error) {
 	log.Printf("Getting pod location from console-operator for pod %s\n", podID)
 	url := fmt.Sprintf("%s/location/%s", om.operatorAddrBase, podID)
+	log.Printf("  query url: %s\n", url)
 	rb, sc, err := getURL(url, nil)
 	if err != nil {
 		log.Printf("Error making GET to %s\n", url)
 		return nil, err
 	}
 
-	if sc != 200 && err == nil {
+	if sc != 200 {
 		return nil, errors.New("failed to getPodLocation")
 	}
 
@@ -105,7 +112,7 @@ func (om OperatorManager) getCurrentTargets() (*CurrentTargets, error) {
 		return nil, err
 	}
 
-	if sc != 200 && err == nil {
+	if sc != 200 {
 		log.Printf("Failed to get current targets, sc=%d", sc)
 		return nil, errors.New("failed to get current targets")
 	}

@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2024 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2025 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -136,7 +136,7 @@ func signalConmanHUP() {
 
 // Function to send SIGTERM to running conmand process
 func signalConmanTERM() {
-	// send interupt to tell conmand process to terminate
+	// send interrupt to tell conmand process to terminate
 	//  NOTE: this is called to force a complete re-initialization including
 	//   regenerating the configuration file
 	if command != nil {
@@ -156,7 +156,7 @@ func executeConman() {
 
 	// NOTE - should not happen, just checking
 	if command != nil {
-		log.Print("ERROR: command not nil on entry to executeComman!!")
+		log.Print("ERROR: command not nil on entry to executeConman!!")
 	}
 
 	// Start the conmand command with arguments

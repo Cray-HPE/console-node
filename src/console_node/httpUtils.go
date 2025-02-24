@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2022, 2024 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2022, 2024-2025 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -30,7 +30,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 )
@@ -96,7 +95,7 @@ func postURL(URL string, requestBody []byte, requestHeaders map[string]string) (
 
 	//log.Printf("postURL Response Status code: %d\n", resp.StatusCode)
 	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		// handle error
 		log.Printf("postURL Error reading response: %s", err)
@@ -136,7 +135,7 @@ func getURL(URL string, requestHeaders map[string]string) ([]byte, int, error) {
 	}
 	defer resp.Body.Close()
 	//log.Printf("getURL Response Status code: %d\n", resp.StatusCode)
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		// handle error
 		log.Printf("Error reading response: %s", err)
