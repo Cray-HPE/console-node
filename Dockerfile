@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright 2020-2022, 2024 Hewlett Packard Enterprise Development LP
+# (C) Copyright 2020-2022, 2024-2025 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -27,9 +27,9 @@
 #  will take a bit of work.
 
 # Build will be where we build the go binary
-FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.5 as build
+FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.6 as build
 
-ARG SP=5
+ARG SP=6
 ARG ARCH=x86_64
 
 # Do zypper operations using a wrapper script, to isolate the necessary artifactory authentication
@@ -37,7 +37,7 @@ COPY zypper-docker-build.sh /
 # The above script calls the following script, so we need to copy it as well
 COPY zypper-refresh-patch-clean.sh /
 RUN --mount=type=secret,id=ARTIFACTORY_READONLY_USER --mount=type=secret,id=ARTIFACTORY_READONLY_TOKEN \
-    ./zypper-docker-build.sh go1.19 && \
+    ./zypper-docker-build.sh go1.23 && \
     rm /zypper-docker-build.sh /zypper-refresh-patch-clean.sh
 
 # Configure go env - installed as package but not quite configured
@@ -51,7 +51,7 @@ COPY vendor/ $GOPATH/src
 # Build configure_conman
 RUN set -ex \
     && go env -w GO111MODULE=auto \
-    && go build -v -i -o /app/console_node $GOPATH/src/console_node
+    && go build -v -o /app/console_node $GOPATH/src/console_node
 
 # NOTE:
 #  We need to switch to the below image, but for now it does not include the 'nobody' user
@@ -69,9 +69,9 @@ RUN set -ex \
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp5:sles15sp5 as base
+FROM arti.hpc.amslabs.hpecorp.net/baseos-docker-master-local/sles15sp6:sles15sp6 as base
 
-ARG SP=5
+ARG SP=6
 ARG ARCH=x86_64
 
 # Do zypper operations using a wrapper script, to isolate the necessary artifactory authentication

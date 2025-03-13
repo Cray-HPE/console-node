@@ -2,7 +2,7 @@
 #
 # MIT License
 #
-# (C) Copyright 2024 Hewlett Packard Enterprise Development LP
+# (C) Copyright 2025 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -32,7 +32,7 @@
 # 2. zypper-refresh-patch-clean.sh script has also been copied into the current directory
 
 # Usage:
-# zypper-docker-build.sh [<package1> <package2> ...] [--remove <packagea> <package b> ...]
+# zypper-docker-build.sh [<package1> <package2> ...] [--remove <package> <package b> ...]
 # Adds the repos, installs the specified packages, removes the specified packages, applies security patches
 
 # Based on the script of the same name in the csm-config repo
@@ -82,9 +82,6 @@ for MODULE in Basesystem Certifications Containers Desktop-Applications Developm
               Public-Cloud Python3 Server-Applications Web-Scripting
 do
     add_zypper_repos "Module-${MODULE}"
-done
-for PRODUCT in HA HPC SLED SLES SLES_SAP WE; do
-    add_zypper_repos "Product-${PRODUCT}"
 done
 zypper --non-interactive --gpg-auto-import-keys refresh
 if [[ ${#INSTALL_LIST[@]} -gt 0 ]]; then

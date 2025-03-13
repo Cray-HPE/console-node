@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2024 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2025 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -51,7 +51,7 @@ type nodeConsoleInfoHeartBeat struct {
 	PodLocation string // location of the current node pod in kubernetes
 }
 
-// console-data heartbeat structure
+// NodeConsoleInfo - console-data heartbeat structure
 type NodeConsoleInfo struct {
 	NodeName        string `json:"nodename"`        // node xname
 	BmcName         string `json:"bmcname"`         // bmc xname
@@ -62,7 +62,7 @@ type NodeConsoleInfo struct {
 	NodeConsoleName string `json:"nodeconsolename"` // the pod console
 }
 
-// Struct to hold information about currently active node pods
+// NodePodInfo - Struct to hold information about currently active node pods
 type NodePodInfo struct {
 	NumActivePods int `json:"numactivepods"`
 }
