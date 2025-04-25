@@ -27,7 +27,7 @@
 #  will take a bit of work.
 
 # Build will be where we build the go binary
-FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.6 as build
+FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.6 AS build
 
 ARG SP=6
 ARG ARCH=x86_64
@@ -55,7 +55,7 @@ RUN set -ex \
 
 ### Final Stage ###
 # Start with a fresh image so build tools are not included
-FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.6 as base
+FROM artifactory.algol60.net/csm-docker/stable/registry.suse.com/suse/sle15:15.6 AS base
 
 ARG SP=6
 ARG ARCH=x86_64

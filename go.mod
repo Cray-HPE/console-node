@@ -20,7 +20,7 @@
 //
 // (MIT License)
 
-module github.com/Cray-HPE/console-operator
+module github.com/Cray-HPE/console-node
 
 go 1.23.0
 
