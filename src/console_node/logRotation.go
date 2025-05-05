@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2021-2023 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2021-2023, 2025 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -76,7 +76,7 @@ func logRotate() {
 		log.Printf("Found LOG_ROTATE_SEC_FREQ: %s", val)
 		envFreq, err := strconv.Atoi(val)
 		if err != nil {
-			log.Printf("Error converting log rotation freqency - expected an integer:%s", err)
+			log.Printf("Error converting log rotation frequency - expected an integer:%s", err)
 		} else {
 			logRotCheckFreqSec = envFreq
 		}
@@ -85,7 +85,7 @@ func logRotate() {
 		log.Printf("Found LOG_ROTATE_NUM_KEEP: %s", val)
 		envNum, err := strconv.Atoi(val)
 		if err != nil {
-			log.Printf("Error converting log rotation freqency - expected an integer:%s", err)
+			log.Printf("Error converting log rotation frequency - expected an integer:%s", err)
 		} else {
 			logRotConNumRotate = envNum
 		}
@@ -353,7 +353,7 @@ func doLogRotate() {
 		// make sure we have a valid number before converting
 		sleepSecs = time.Duration(logRotCheckFreqSec) * time.Second
 	} else {
-		log.Printf("Log rotation freqency invalid, defaulting to 5 min. Input value:%d", logRotCheckFreqSec)
+		log.Printf("Log rotation frequency invalid, defaulting to 5 min. Input value:%d", logRotCheckFreqSec)
 	}
 
 	// keep track of last rotate time for all log files - need to kick

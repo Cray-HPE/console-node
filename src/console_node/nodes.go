@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2019-2024 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2019-2025 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -63,9 +63,9 @@ func (node nodeConsoleInfo) isParadise() bool {
 }
 
 // Provide a function to convert struct to string
-func (nc nodeConsoleInfo) String() string {
+func (node nodeConsoleInfo) String() string {
 	return fmt.Sprintf("NodeName:%s, BmcName:%s, BmcFqdn:%s, Class:%s, NID:%d, Role:%s",
-		nc.NodeName, nc.BmcName, nc.BmcFqdn, nc.Class, nc.NID, nc.Role)
+		node.NodeName, node.BmcName, node.BmcFqdn, node.Class, node.NID, node.Role)
 }
 
 // Globals for managing nodes being watched

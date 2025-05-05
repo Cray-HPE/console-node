@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- CASMCMS-9085 - Initial implementation of websocket api for console services.
+- CASMCMS-9090 - use suse 1.5 sp6 base image from artifactory.algol60.net.
 
 ## [2.8.0] - 2025-02-03
 ### Fixed
