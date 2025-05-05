@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.9.0] - 2025-05-05
+### Added
+- CASMCMS-9085 - Initial implementation of websocket api for console services.
+- CASMCMS-9090 - use suse 1.5 sp6 base image from artifactory.algol60.net.
+
+### Dependencies
+- Update github.com/hashicorp/go-cleanhttp v0.5.1 to v0.5.2
+- Update github.com/hashicorp/go-retryablehttp v0.5.4 to v0.7.7
+- Update golang.org/x/crypto v0.31.0 to v0.36.0
+- Update golang.org/x/net v0.21.0 to v0.38.0
+- Update golang.org/x/sys v0.28.0 to  v0.31.0
+- Update golang.org/x/text v0.21.0 to v0.23.0
+- Update gopkg.in/square/go-jose.v2 v2.3.1 to v2.6.0
+
 ## [2.8.0] - 2025-02-03
 ### Fixed
 - CASMTRIAGE-7715 - fix file permissions for log directories as well as files
