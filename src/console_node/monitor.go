@@ -27,10 +27,7 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"time"
@@ -39,10 +36,10 @@ import (
 )
 
 // Time to wait between checking for credential changes
-var monitorIntervalSecs int = 30
+var monitorIntervalSecs int = 300
 
-var previousPrivateKeyHash []byte = nil
-var previousPublicKeyHash []byte = nil
+//var previousPrivateKeyHash []byte = nil
+//var previousPublicKeyHash []byte = nil
 
 var previousPasswords map[string]compcreds.CompCredentials = nil
 
@@ -156,6 +153,17 @@ func checkIfRiverPasswordsChanged() bool {
 
 // function to check if the console keys have changed since the last run of this function
 func checkIfMountainConsoleKeysChanged() bool {
+	// Checking for a mountain ssh key happens in the update config thread, need to use that mutex
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// this returns true is the key has changes
+	return ensureMountainConsoleKeysPresent()
+}
+
+/*
+// function to check if the console keys have changed since the last run of this function
+func checkIfMountainConsoleKeysChanged() bool {
 	var keysChanged bool = false
 
 	if len(currentMtnNodes) == 0 {
@@ -209,3 +217,4 @@ func hashFile(fileName string) ([]byte, error) {
 	}
 	return hasher.Sum(nil), nil
 }
+*/

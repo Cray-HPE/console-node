@@ -30,6 +30,7 @@ require (
 	github.com/Cray-HPE/hms-compcredentials v1.11.2
 	github.com/Cray-HPE/hms-securestorage v1.12.2
 	github.com/hpcloud/tail v1.0.0
+	github.com/tidwall/gjson v1.9.3
 )
 
 require (
@@ -50,6 +51,8 @@ require (
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.4.1 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
