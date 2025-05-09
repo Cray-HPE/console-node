@@ -160,6 +160,7 @@ func vaultExportPrivateKey(vaultToken string) (pvtKey string, response []byte, r
 			return "", response, responseCode, fmt.Errorf("Empty or missing %s element in Vault response",
 				jsonElem)
 		}
+		log.Printf("Successfully retrieved the %s secret from Vault", vaultBmcKeyName)
 		return pvtKey.String(), response, 200, nil
 	} else {
 		// Return an error for any unhandled http response code.
@@ -254,6 +255,10 @@ func ensureMountainConsoleKeysPresent() bool {
 					continue
 				}
 				log.Printf("Mountain ssh key file created")
+				return retVal
+			} else {
+				// This is the same key as before, no need to write it again
+				log.Printf("Mountain ssh key file already exists")
 				return retVal
 			}
 		}
