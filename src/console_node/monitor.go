@@ -75,9 +75,8 @@ func checkItemPermissions(itemName string, mode os.FileMode) {
 		return
 	}
 
-	log.Printf("    File Mode: %s", fs.Mode().String())
 	if fs.Mode()&mode != mode {
-		log.Printf("    Log file %s not user read/write - changing permissions", itemName)
+		log.Printf("    Log file %s not user read/write: %s - changing permissions", itemName, fs.Mode().String())
 		newMod := fs.Mode() | mode
 		os.Chmod(itemName, newMod)
 	}
