@@ -34,6 +34,8 @@ console_node_config:
   cray_console_node_log_identifier: 'ID'
   cray_console_node_smd_url: 'http://cray-smd'
   cray_console_node_rf_endpoint: 'hsm/v2/Inventory/RedfishEndpoints'
+  cray_console_node_vault_url: 'http://cray-vault.vault:8200/v1'
+  cray_console_node_vault_bmc_key_name: 'mountain-bmc-console'
 
 cray-service:
   type: StatefulSet

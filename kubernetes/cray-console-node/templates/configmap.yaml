@@ -39,3 +39,9 @@ data:
 
   # Redfish Endpoint URL
   RF_ENDPOINT: "{{ .Values.console_node_config.cray_console_node_rf_endpoint }}"
+
+  # Vault URL
+  VAULT_URL: "{{ .Values.console_node_config.cray_console_node_vault_url }}"
+
+  # BMC Key name
+  VAULT_BMC_KEY_NAME: "{{ .Values.console_node_config.cray_console_node_vault_bmc_key_name }}"

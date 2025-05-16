@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- CASMTRIAGE-8101 - fetch bmc ssh keys directly and store them on local disk
+
+### Dependencies
+- Bump `github.com/Cray-HPE/hms-compcredentials` from v1.11.2 to v1.14.0
+- Bump `github.com/Cray-HPE/hms-securestorage` from v1.12.2 to v1.16.0
+- Add `github.com/tidwall/gjson` v1.9.3
 
 ## [2.9.0] - 2025-05-05
 ### Added
