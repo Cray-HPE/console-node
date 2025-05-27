@@ -234,24 +234,32 @@ func releaseAllNodes() {
 	defer currNodesMutex.Unlock()
 
 	log.Printf("Releasing all nodes back for re-assignment")
-	// gather all current nodes
-	var rn []nodeConsoleInfo
 
-	// iterate through all nodes to stop tailing into the aggregation logs
+	// gather all current nodes
+	numNodes := len(currentRvrNodes) + len(currentPdsNodes) + len(currentMtnNodes)
+	rn := make([]nodeConsoleInfo, 0, numNodes)
+
+	// iterate through all nodes gathering them
 	allNodes := [3](*map[string]*nodeConsoleInfo){&currentRvrNodes, &currentPdsNodes, &currentMtnNodes}
 	for _, ar := range allNodes {
 		// release river nodes
-		for key, ni := range *ar {
+		for _, ni := range *ar {
 			// record and stop tailing
 			rn = append(rn, *ni)
-			stopTailing(key)
 		}
 	}
 
 	// release all current node lists
+	// NOTE: do this before stopping tailing to prevent tailing restart
 	currentRvrNodes = make(map[string]*nodeConsoleInfo)
 	currentPdsNodes = make(map[string]*nodeConsoleInfo)
 	currentMtnNodes = make(map[string]*nodeConsoleInfo)
+
+	// stop tailing all the nodes
+	for _, ni := range rn {
+		// stop tailing the node
+		stopTailing(ni.NodeName)
+	}
 
 	// release the nodes from console-data
 	releaseNodes(rn)

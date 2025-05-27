@@ -52,6 +52,9 @@ var conAggLogFile string = ""
 // map to cancel threads tailing log files
 var tailThreads map[string]*context.CancelFunc = make(map[string]*context.CancelFunc)
 
+// channel to watch exiting tail goroutines
+var tailThreadsChan chan string = make(chan string)
+
 // Set up tailing a log file to add to the aggregation file
 func aggregateFile(xname string) bool {
 	// NOTE: in update config thread
@@ -68,6 +71,23 @@ func aggregateFile(xname string) bool {
 		go watchConsoleLogFile(ctx, xname)
 	}
 	return newFile
+}
+
+// Function to watch for exiting tail goroutines and clean up
+func watchTailThreads() {
+	// check for any tail threads that have exited
+	for xname := range tailThreadsChan {
+		// remove from map since the current context has been cancelled
+		log.Printf("Tail thread for %s has exited", xname)
+		delete(tailThreads, xname)
+
+		// see if this exited unexpectedly and needs to be restarted
+		if isNodeMonitored(xname) {
+			// pump the brakes on respinning the tail in case something is wrong
+			time.Sleep(1 * time.Second)
+			aggregateFile(xname)
+		}
+	}
 }
 
 // Test function to kill the 'tail' functionality when 'killTails.txt' is created
@@ -113,6 +133,12 @@ func stopTailing(xname string) {
 // Watch the input file and append any new content to the aggregate console log file
 func watchConsoleLogFile(ctx context.Context, xname string) {
 	// Keep tailing the input file until the context.Done() is called, then exit
+
+	// signal when the function exits - make sure the close function map is cleaned up
+	defer func() {
+		log.Printf("WATCH_CONSOLE: %s exiting...", xname)
+		tailThreadsChan <- xname
+	}()
 
 	// Configuration for tail function -
 	conf := tail.Config{

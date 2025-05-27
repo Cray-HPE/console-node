@@ -116,6 +116,23 @@ func getCurrNodeXnames() []string {
 	return retVal
 }
 
+// function to see if a node is being monitored
+func isNodeMonitored(xname string) bool {
+	// put a lock on the current nodes while looking for new ones
+	currNodesMutex.Lock()
+	defer currNodesMutex.Unlock()
+
+	// check if this node is being monitored
+	if _, ok := currentMtnNodes[xname]; ok {
+		return true
+	} else if _, ok := currentRvrNodes[xname]; ok {
+		return true
+	} else if _, ok := currentPdsNodes[xname]; ok {
+		return true
+	}
+	return false
+}
+
 // small helper function to insure correct number of nodes asked for
 func pinNumNodes(numAsk, numMax int) int {
 	// insure the input number ends in range [0,numMax]
