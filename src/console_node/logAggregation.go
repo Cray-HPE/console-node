@@ -78,11 +78,12 @@ func watchTailThreads() {
 	// check for any tail threads that have exited
 	for xname := range tailThreadsChan {
 		// remove from map since the current context has been cancelled
-		log.Printf("Tail thread for %s has exited", xname)
+		log.Printf("watchTailThreads: Tail thread for %s has exited", xname)
 		delete(tailThreads, xname)
 
 		// see if this exited unexpectedly and needs to be restarted
 		if isNodeMonitored(xname) {
+			log.Printf("watchTailThreads: Restart tail thread for %s", xname)
 			// pump the brakes on respinning the tail in case something is wrong
 			time.Sleep(1 * time.Second)
 			aggregateFile(xname)
@@ -120,11 +121,11 @@ func killTails() {
 func stopTailing(xname string) {
 	if tt, ok := tailThreads[xname]; ok {
 		log.Printf("Halting tail of %s", xname)
-		// call the cancel function
-		(*tt)()
-
 		// remove from map
 		delete(tailThreads, xname)
+
+		// call the cancel function
+		(*tt)()
 	} else {
 		log.Printf("Stop tailing: could not find %s in tailThreads map", xname)
 	}

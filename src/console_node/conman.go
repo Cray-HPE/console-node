@@ -50,7 +50,11 @@ func configConman(forceConfigUpdate bool) bool {
 	// NOTE: this prevents the lists from being updated in the middle of doing
 	//  the configuration
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("configConman:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("configConman:: unlocking mutex")
+	}()
 
 	// Set up or update the conman configuration file.
 	updateConfigFile(forceConfigUpdate)

@@ -122,7 +122,11 @@ func checkIfRiverPasswordsChanged() bool {
 	}
 
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("checkIfRiverPasswordsChanged:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("checkIfRiverPasswordsChanged:: unlocking mutex")
+	}()
 
 	var xnames []string = nil
 	allNodes := [2](*map[string]*nodeConsoleInfo){&currentRvrNodes, &currentPdsNodes}
@@ -154,7 +158,11 @@ func checkIfRiverPasswordsChanged() bool {
 func checkIfMountainConsoleKeysChanged() bool {
 	// Checking for a mountain ssh key happens in the update config thread, need to use that mutex
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("checkIfMountainConsoleKeysChanged:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("checkIfMountainConsoleKeysChanged:: unlocking mutex")
+	}()
 
 	// this returns true is the key has changes
 	return ensureMountainConsoleKeysPresent()

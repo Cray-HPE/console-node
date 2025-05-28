@@ -135,7 +135,11 @@ func acquireNewNodes(numMtn, numRvr int, podLocation *PodLocationDataResponse) [
 func sendSingleHeartbeat() {
 	// lock the list of current nodes while updating heartbeat information
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("sendSingleHeartbeat:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("sendSingleHeartbeat:: unlocking mutex")
+	}()
 
 	// create the url for the heartbeat of this pod
 	url := fmt.Sprintf("%s/consolepod/%s/heartbeat", dataAddrBase, podID)

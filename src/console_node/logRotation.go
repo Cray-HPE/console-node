@@ -129,7 +129,11 @@ func doInitialConfFileUpdate() {
 
 	// put a lock on the current nodes while writing the file
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("doInitialConfFileUpdate:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("doInitialConfFileUpdate:: unlocking mutex")
+	}()
 
 	// update the file now that it is safe to do so
 	updateLogRotateConf()

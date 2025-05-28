@@ -231,7 +231,11 @@ func main() {
 func releaseAllNodes() {
 	// make sure nobody else is messing with the current nodes
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("releaseAllNodes:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("releaseAllNodes:: unlocking mutex")
+	}()
 
 	log.Printf("Releasing all nodes back for re-assignment")
 

@@ -99,7 +99,11 @@ const targetNodeFile string = "/var/log/console/TargetNodes.txt"
 func getCurrNodeXnames() []string {
 	// put a lock on the current nodes while looking for new ones
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("getCurrNodeXnames:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("getCurrNodeXnames:: unlocking mutex")
+	}()
 
 	// gather the names of all the current nodes being watched
 	var retVal []string
@@ -120,7 +124,11 @@ func getCurrNodeXnames() []string {
 func isNodeMonitored(xname string) bool {
 	// put a lock on the current nodes while looking for new ones
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("isNodeMonitored:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("isNodeMonitored:: unlocking mutex")
+	}()
 
 	// check if this node is being monitored
 	if _, ok := currentMtnNodes[xname]; ok {
@@ -228,7 +236,11 @@ func doGetNewNodes() {
 
 	// put a lock on the current nodes while looking for new ones
 	currNodesMutex.Lock()
-	defer currNodesMutex.Unlock()
+	log.Print(("doGetNewNodes:: locking mutex"))
+	defer func() {
+		currNodesMutex.Unlock()
+		log.Print("doGetNewNodes:: unlocking mutex")
+	}()
 
 	// keep track of if we need to redo the configuration
 	changed := false
