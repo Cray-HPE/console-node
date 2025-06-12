@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.1] - 2025-06-12
+### Fixed
+- CASMINST-7294 - fix file ownership for aggregation files
+
 ## [2.10.0] - 2025-05-29
 ### Fixed
 - CASMTRIAGE-8101 - fetch bmc ssh keys directly and store them on local disk
