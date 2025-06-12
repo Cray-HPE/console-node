@@ -38,11 +38,16 @@ spec:
       - name: hook1-container
         image: {{ .Values.alpine.image.repository }}:{{ .Values.alpine.image.tag }}
         imagePullPolicy: {{ .Values.alpine.image.pullPolicy }}
-        command: ['sh', '-c', 'mkdir -p /var/log/conman /var/log/conman.old /var/log/console && chown -Rv 65534:65534 /var/log && chmod -R 777 /var/log']
+        command: ['sh', '-c', 'mkdir -p /var/log/conman /var/log/conman.old /var/log/console && chown -Rv 65534:65534 /var/log && chmod -R 777 /var/log && chown -Rv 65534:65534 /tmp/consoleAgg']
         volumeMounts:
           - mountPath: /var/log
             name: cray-console-logs
+          - mountPath: /tmp/consoleAgg
+            name: cray-console-node-agg
       volumes:
         - name: cray-console-logs
           persistentVolumeClaim:
             claimName: cray-console-operator-data-claim
+        - name: cray-console-node-agg
+          persistentVolumeClaim:
+            claimName: cray-console-node-agg-data-claim
