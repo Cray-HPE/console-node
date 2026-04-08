@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dependencies
+- CASMCMS-9638: Update `zypper-refresh-patch-clean.sh` to ensure it applies all necessary patches
+
 ## [2.10.1] - 2025-06-12
 ### Fixed
 - CASMINST-7294 - fix file ownership for aggregation files
