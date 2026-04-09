@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dependencies
+- Bump `github.com/go-jose/go-jose/v4` from 4.0.5 to 4.1.4 ([#133](https://github.com/Cray-HPE/console-node/pull/133))
+
 ## [2.10.2] - 2026-04-09
 ### Dependencies
 - CASMCMS-9638: Update `zypper-refresh-patch-clean.sh` to ensure it applies all necessary patches
