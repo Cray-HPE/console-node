@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright 2020-2022, 2024-2025 Hewlett Packard Enterprise Development LP
+# (C) Copyright 2020-2022, 2024-2026 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -37,7 +37,7 @@ COPY zypper-docker-build.sh /
 # The above script calls the following script, so we need to copy it as well
 COPY zypper-refresh-patch-clean.sh /
 RUN --mount=type=secret,id=ARTIFACTORY_READONLY_USER --mount=type=secret,id=ARTIFACTORY_READONLY_TOKEN \
-    ./zypper-docker-build.sh go1.23 && \
+    ./zypper-docker-build.sh go1.24 && \
     rm /zypper-docker-build.sh /zypper-refresh-patch-clean.sh
 
 # Configure go env - installed as package but not quite configured
