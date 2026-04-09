@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dependencies
+- CASMCMS-9638: Update `zypper-refresh-patch-clean.sh` to ensure it applies all necessary patches
+- CASMCMS-9637: Update `zypper-docker-build.sh`
+    - Include SLE LTSS zypper repositories, in order to pick up CVE fixes
+    - Create single version across the github repos which use it
+
 ## [2.10.1] - 2025-06-12
 ### Fixed
 - CASMINST-7294 - fix file ownership for aggregation files
