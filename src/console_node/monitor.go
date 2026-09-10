@@ -1,7 +1,7 @@
 //
 //  MIT License
 //
-//  (C) Copyright 2023-2025 Hewlett Packard Enterprise Development LP
+//  (C) Copyright 2023-2026 Hewlett Packard Enterprise Development LP
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a
 //  copy of this software and associated documentation files (the "Software"),
@@ -137,8 +137,8 @@ func checkIfRiverPasswordsChanged() bool {
 
 	for _, xname := range xnames {
 		currentCreds, ok := currentPasswords[xname]
-		if !ok {
-			log.Printf("Missing credentials detected for %s while checking for credential changes", xname)
+		if !ok || currentCreds.Username == "" || currentCreds.Password == "" {
+			log.Printf("WARNING: Missing/ Incomplete credentials detected for %s while checking for credentials changes", xname)
 			continue
 		}
 		previousCreds, _ := previousPasswords[xname]
