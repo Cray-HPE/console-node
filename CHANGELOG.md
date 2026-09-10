@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.3] - 2026-9-10
+### Fixed
+ - CASMTRIAGE-9260/CAST-40271: Conman restarting frequently due "Change detected in the river passwords..." resulting in missing conman logs.
+   - Fixed to ignore blank current credentials to avoid unnecessary ConMon restarts.
+
+## [2.10.2] - 2026-04-09
 ### Dependencies
 - Bump `github.com/go-jose/go-jose/v4` from 4.0.5 to 4.1.4 ([#133](https://github.com/Cray-HPE/console-node/pull/133))
 - CASMCMS-9640: Bump Golang 1.23 to 1.24
@@ -14,8 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - The updated `go-jose` version requires 1.24
     - This allowed `go-jose` to remove an external dependency that was a regular source of CVEs
 
-
-## [2.10.2] - 2026-04-09
 ### Dependencies
 - CASMCMS-9638: Update `zypper-refresh-patch-clean.sh` to ensure it applies all necessary patches
 - CASMCMS-9637: Update `zypper-docker-build.sh`
