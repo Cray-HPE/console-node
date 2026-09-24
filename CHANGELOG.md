@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dependencies
+- Bump `golang.org/x/net` from 0.38.0 to 0.55.0 ([#134](https://github.com/Cray-HPE/console-node/pull/134))
+
 ## [2.10.3] - 2026-9-10
 ### Fixed
  - CASMTRIAGE-9260/CAST-40271: Conman restarting frequently due "Change detected in the river passwords..." resulting in missing conman logs.
